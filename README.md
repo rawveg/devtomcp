@@ -10,24 +10,6 @@ An implementation of a Model Context Protocol (MCP) server for the Dev.to API, p
 
 ---
 
-## 📚 Table of Contents
-- [Features](#features)
-- [License](#license)
-- [Server Configuration](#server-configuration)
-- [Client Authentication](#client-authentication)
-- [Getting Started](#getting-started)
-  - [Running with Docker](#running-with-docker)
-  - [Client Configuration](#client-configuration)
-  - [Programmatic Access with Python](#programmatic-access-with-python)
-- [Deploying to Google Cloud Run](#deploying-to-google-cloud-run)
-- [Error Handling](#error-handling)
-- [Security Considerations](#security-considerations)
-- [Contributing](#contributing)
-- [Acknowledgments](#acknowledgments)
-- [Contact](#contact)
-
----
-
 ## ✨ Features
 
 | Feature                        | Description                                      |
