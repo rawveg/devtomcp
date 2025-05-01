@@ -48,6 +48,12 @@ An implementation of a Model Context Protocol (MCP) server for the Dev.to API, p
 
 This project is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
 
+**COMMERCIAL USE WARNING** 
+
+If you want to use or deploy this code in any form as a monetised service to others, even if you don't specifically require payment for the code, you need to contact me for permission (this means _YOU_ Smithery/Glama or ANY similar services) - which will only be granted following payment of the appropriate licensing fee. No, you might not be charging for the use of the code itself, and you might be providing the infrastructure, but you'd be using _MY_ code to facilitate _YOUR_ service. That's an intrinsic dependency that **MUST** be licensed. 
+
+For anyone else, whether you're a business or individual, I hope it's of use to you. Enjoy.
+
 ---
 
 ## ⚙️ Server Configuration
@@ -180,16 +186,17 @@ if __name__ == "__main__":
 For deploying to Google Cloud Run:
 
 ```bash
-# Build the Docker image
-gcloud builds submit --tag gcr.io/your-project/dev-to-mcp
-
-# Deploy to Cloud Run with environment variables
-gcloud run deploy dev-to-mcp \
-  --image gcr.io/your-project/dev-to-mcp \
+# Build from source
+gcloud run deploy devtomcp \
+  --source ./ \
   --platform managed \
+  --region [REGION] \
   --allow-unauthenticated \
-  --set-env-vars="PORT=8080,LOG_LEVEL=INFO"
+  --set-env-vars="PORT=8080,LOG_LEVEL=INFO" 
 ```
+
+Replace:
+- `[REGION]` with your preferred Google Cloud region (e.g., `us-central1`)
 
 ---
 

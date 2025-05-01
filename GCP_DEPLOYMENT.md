@@ -97,19 +97,17 @@ gcloud builds submit --tag gcr.io/[PROJECT_ID]/dev-to-mcp:latest .
 Deploy the container to Google Cloud Run:
 
 ```bash
-gcloud run deploy dev-to-mcp \
-  --image gcr.io/[PROJECT_ID]/dev-to-mcp:latest \
+# Build from source
+gcloud run deploy devtomcp \
+  --source ./ \
   --platform managed \
   --region [REGION] \
   --allow-unauthenticated \
-  --set-env-vars "DEVTO_API_KEY=[OPTIONAL-DEFAULT-API-KEY]"
+  --set-env-vars="PORT=8080,LOG_LEVEL=INFO" 
 ```
 
 Replace:
 - `[REGION]` with your preferred Google Cloud region (e.g., `us-central1`)
-- `[OPTIONAL-DEFAULT-API-KEY]` with your default API key (optional)
-
-> **Note:** This default API key is only used as a fallback when clients don't provide their own API key.
 
 ---
 
