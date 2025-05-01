@@ -288,7 +288,7 @@ async def browse_latest_articles(
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     Get the most recent articles from Dev.to across multiple pages.
     
@@ -341,8 +341,19 @@ async def browse_latest_articles(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None
+            }
+            for article in all_articles
+        ]
     except Exception as e:
         logger.error(f"Error getting latest articles: {str(e)}")
         raise MCPError(f"Failed to get latest articles: {str(e)}")
@@ -353,7 +364,7 @@ async def browse_popular_articles(
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     Get the most popular articles from Dev.to across multiple pages.
     
@@ -406,8 +417,19 @@ async def browse_popular_articles(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None
+            }
+            for article in all_articles
+        ]
     except Exception as e:
         logger.error(f"Error getting popular articles: {str(e)}")
         raise MCPError(f"Failed to get popular articles: {str(e)}")
@@ -419,7 +441,7 @@ async def browse_articles_by_tag(
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     Get articles with a specific tag across multiple pages.
     
@@ -473,8 +495,19 @@ async def browse_articles_by_tag(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None
+            }
+            for article in all_articles
+        ]
     except Exception as e:
         logger.error(f"Error getting articles by tag: {str(e)}")
         raise MCPError(f"Failed to get articles with tag '{tag}': {str(e)}")
@@ -529,7 +562,7 @@ async def search_articles(
     page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 30,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     Search for articles on Dev.to across multiple pages.
     
@@ -614,8 +647,20 @@ async def search_articles(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_matching_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None,
+                "match_type": "search_result" 
+            }
+            for article in all_matching_articles
+        ]
     except Exception as e:
         logger.error(f"Error searching articles for '{query}': {str(e)}")
         raise MCPError(f"Failed to search for '{query}': {str(e)}")
@@ -627,7 +672,7 @@ async def search_articles_by_user(
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 30,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     Get all articles published by a specific Dev.to user.
     
@@ -681,8 +726,19 @@ async def search_articles_by_user(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None
+            }
+            for article in all_articles
+        ]
     except Exception as e:
         logger.error(f"Error fetching articles for user '{username}': {str(e)}")
         raise MCPError(f"Failed to get articles for user '{username}': {str(e)}")
@@ -693,7 +749,7 @@ async def list_my_articles(
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
     max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
-) -> str:
+) -> List[Dict[str, Any]]:
     """
     List your published articles across multiple pages.
     
@@ -751,8 +807,19 @@ async def list_my_articles(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
             
-        # Return the formatted results
-        return format_article_list(all_articles)
+        # Return a simplified list of articles with essential details
+        return [
+            {
+                "id": article.get("id"),
+                "title": article.get("title"),
+                "url": article.get("url"),
+                "published_at": article.get("published_at"),
+                "description": article.get("description"),
+                "tags": article.get("tag_list", []),
+                "author": article.get("user", {}).get("username") if article.get("user") else None
+            }
+            for article in all_articles
+        ]
     except Exception as e:
         logger.error(f"Error listing user articles: {str(e)}")
         raise MCPError(f"Failed to list your articles: {str(e)}")
