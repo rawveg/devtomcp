@@ -25,7 +25,7 @@ import os
 import json
 import logging
 import asyncio
-from typing import List, Dict, Any, Optional, Union, Annotated
+from typing import List, Dict, Any, Optional, Union, Annotated, Iterator
 
 import httpx
 from fastapi import FastAPI, Request, Response
@@ -280,6 +280,32 @@ def get_api_key(ctx: Context) -> str:
         
     return env.get('DEVTO_API_KEY')
 
+# Helper class for returning structured data directly (without using MCPResponse)
+class ArticleListResponse:
+    """Helper to format article data as structured content."""
+    
+    @staticmethod
+    def create(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Create a properly structured response with the articles as direct content."""
+        # Return the articles directly as a list - FastMCP will handle the proper serialization
+        return articles
+        
+# Function to convert raw articles to a simplified list with essential details
+def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert raw article data to a simplified list with essential details."""
+    return [
+        {
+            "id": article.get("id"),
+            "title": article.get("title"),
+            "url": article.get("url"),
+            "published_at": article.get("published_at"),
+            "description": article.get("description"),
+            "tags": article.get("tag_list", []),
+            "author": article.get("user", {}).get("username") if article.get("user") else None
+        }
+        for article in articles
+    ]
+
 # MCP Tool implementations
 
 @mcp.tool()
@@ -342,18 +368,8 @@ async def browse_latest_articles(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None
-            }
-            for article in all_articles
-        ]
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error getting latest articles: {str(e)}")
         raise MCPError(f"Failed to get latest articles: {str(e)}")
@@ -418,18 +434,8 @@ async def browse_popular_articles(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None
-            }
-            for article in all_articles
-        ]
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error getting popular articles: {str(e)}")
         raise MCPError(f"Failed to get popular articles: {str(e)}")
@@ -496,18 +502,8 @@ async def browse_articles_by_tag(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None
-            }
-            for article in all_articles
-        ]
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error getting articles by tag: {str(e)}")
         raise MCPError(f"Failed to get articles with tag '{tag}': {str(e)}")
@@ -648,19 +644,11 @@ async def search_articles(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None,
-                "match_type": "search_result" 
-            }
-            for article in all_matching_articles
-        ]
+        simplified_articles = simplify_articles(all_matching_articles)
+        # Add a match_type field to indicate these are search results
+        for article in simplified_articles:
+            article["match_type"] = "search_result"
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error searching articles for '{query}': {str(e)}")
         raise MCPError(f"Failed to search for '{query}': {str(e)}")
@@ -727,18 +715,8 @@ async def search_articles_by_user(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None
-            }
-            for article in all_articles
-        ]
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error fetching articles for user '{username}': {str(e)}")
         raise MCPError(f"Failed to get articles for user '{username}': {str(e)}")
@@ -808,18 +786,8 @@ async def list_my_articles(
             await ctx.report_progress(progress=100, total=100)
             
         # Return a simplified list of articles with essential details
-        return [
-            {
-                "id": article.get("id"),
-                "title": article.get("title"),
-                "url": article.get("url"),
-                "published_at": article.get("published_at"),
-                "description": article.get("description"),
-                "tags": article.get("tag_list", []),
-                "author": article.get("user", {}).get("username") if article.get("user") else None
-            }
-            for article in all_articles
-        ]
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error listing user articles: {str(e)}")
         raise MCPError(f"Failed to list your articles: {str(e)}")
