@@ -1,0 +1,10 @@
+services:
+  devto-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./server.py:/app/server.py
+    restart: unless-stopped 

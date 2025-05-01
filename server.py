@@ -1,0 +1,701 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Dev.to MCP Server - A server implementation for interacting with Dev.to API
+
+This program provides an MCP server interface to the Dev.to API.
+
+Copyright (C) 2023 <Your Name/Organization>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+import os
+import json
+import logging
+import asyncio
+from typing import List, Dict, Any, Optional, Union, Annotated
+
+import httpx
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastmcp import FastMCP, Context
+from pydantic import BaseModel, Field
+
+# Load configuration from environment variables
+PORT = int(os.environ.get("PORT", 8000))
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+# Configure logging based on environment variable
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("devto-mcp")
+
+# Log configuration (without sensitive data)
+logger.info(f"Starting server with PORT={PORT}, LOG_LEVEL={LOG_LEVEL}")
+
+# Constants
+DEVTO_API_BASE_URL = "https://dev.to/api"
+
+# API client for Dev.to interactions
+class DevToClient:
+    """Client for interacting with the Dev.to API."""
+    
+    def __init__(self, api_key: str = None):
+        """Initialize the Dev.to API client."""
+        self.base_url = DEVTO_API_BASE_URL
+        self.api_key = api_key
+        
+    async def _get_headers(self) -> Dict[str, str]:
+        """Get headers for API requests."""
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if self.api_key:
+            headers["api-key"] = self.api_key
+        return headers
+    
+    async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """Make a GET request to the Dev.to API."""
+        async with httpx.AsyncClient() as client:
+            headers = await self._get_headers()
+            url = f"{self.base_url}{path}"
+            response = await client.get(url, params=params, headers=headers, timeout=10.0)
+            response.raise_for_status()
+            return response.json()
+    
+    async def post(self, path: str, data: Dict[str, Any]) -> Any:
+        """Make a POST request to the Dev.to API."""
+        if not self.api_key:
+            raise ValueError("Dev.to API key is required for POST operations")
+            
+        async with httpx.AsyncClient() as client:
+            headers = await self._get_headers()
+            url = f"{self.base_url}{path}"
+            response = await client.post(url, json=data, headers=headers, timeout=10.0)
+            response.raise_for_status()
+            return response.json()
+            
+    async def put(self, path: str, data: Dict[str, Any]) -> Any:
+        """Make a PUT request to the Dev.to API."""
+        if not self.api_key:
+            raise ValueError("Dev.to API key is required for PUT operations")
+            
+        async with httpx.AsyncClient() as client:
+            headers = await self._get_headers()
+            url = f"{self.base_url}{path}"
+            response = await client.put(url, json=data, headers=headers, timeout=10.0)
+            response.raise_for_status()
+            return response.json()
+
+# Custom exception for MCP-related errors
+class MCPError(Exception):
+    """Custom exception for MCP-related errors."""
+    
+    def __init__(self, message: str, status_code: int = 400):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
+
+# Create FastAPI app for health checks and info endpoints
+app = FastAPI(
+    title="Dev.to MCP Server",
+    description="An MCP server for interacting with the Dev.to API",
+    version="1.0.0",
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Create MCP server
+mcp = FastMCP(
+    name="Dev.to API",
+    description="MCP server for interacting with the Dev.to API",
+    instructions="""
+    # Dev.to API MCP Server
+    
+    This server provides tools for interacting with the Dev.to API, 
+    allowing you to browse, search, read, and create content.
+    
+    ## Required Configuration
+    
+    This MCP server requires a Dev.to API key to function properly.
+    Please provide your Dev.to API key in the client configuration:
+    
+    ```json
+    {
+      "mcpServers": {
+        "devto": {
+          "transport": "sse",
+          "url": "http://localhost:8000/sse",
+          "env": {
+            "DEVTO_API_KEY": "your_dev_to_api_key_here"
+          }
+        }
+      }
+    }
+    ```
+    
+    ## Available Tools
+    
+    ### Browsing Content
+    - browse_latest_articles(): Get recent articles from Dev.to
+    - browse_popular_articles(): Get popular articles
+    - browse_articles_by_tag(tag): Get articles with a specific tag
+    
+    ### Reading Content  
+    - get_article(id): Get article details by ID
+    - get_user_profile(username): Get information about a Dev.to user
+    
+    ### Searching Content
+    - search_articles(query, page): Search for articles by keywords
+    
+    ### Managing Content
+    - list_my_articles(page, per_page): List your published articles
+    - create_article(title, content, tags, published): Create a new article
+    - update_article(id, title, content, tags, published): Update an existing article
+    
+    ## Examples
+    - To find Python articles: search_articles("python")
+    - To get an article: get_article(12345)
+    - To create an article: create_article("Title", "Content", "tag1,tag2", false)
+    - To see your articles: list_my_articles()
+    """
+)
+
+# Helper functions for formatting responses
+def format_article_list(articles: List[Dict[str, Any]]) -> str:
+    """Format a list of articles for display."""
+    if not articles:
+        return "No articles found."
+        
+    result = []
+    result.append("# Articles")
+    result.append("")
+    
+    for article in articles:
+        title = article.get("title", "Untitled")
+        id = article.get("id", "Unknown ID")
+        username = article.get("user", {}).get("username", "unknown")
+        date = article.get("published_at", "Unknown date")
+        tags = article.get("tag_list", [])
+        tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+        
+        result.append(f"## {title}")
+        result.append(f"ID: {id}")
+        result.append(f"Author: {username}")
+        result.append(f"Published: {date}")
+        result.append(f"Tags: {tags_str}")
+        result.append(f"URL: {article.get('url', '')}")
+        result.append("")
+        result.append(article.get("description", "No description available."))
+        result.append("")
+    
+    return "\n".join(result)
+
+def format_article_detail(article: Dict[str, Any]) -> str:
+    """Format a single article with full details."""
+    if not article:
+        return "Article not found."
+        
+    title = article.get("title", "Untitled")
+    id = article.get("id", "Unknown ID")
+    username = article.get("user", {}).get("username", "unknown")
+    date = article.get("published_at", "Unknown date")
+    tags = article.get("tag_list", [])
+    tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+    body = article.get("body_markdown", "No content available.")
+    
+    result = []
+    result.append(f"# {title}")
+    result.append("")
+    result.append(f"ID: {id}")
+    result.append(f"Author: {username}")
+    result.append(f"Published: {date}")
+    result.append(f"Tags: {tags_str}")
+    result.append(f"URL: {article.get('url', '')}")
+    result.append("")
+    result.append("## Content")
+    result.append("")
+    result.append(body)
+    
+    return "\n".join(result)
+
+def format_user_profile(user: Dict[str, Any]) -> str:
+    """Format user profile information."""
+    if not user:
+        return "User not found."
+        
+    name = user.get("name", "Unknown")
+    username = user.get("username", "unknown")
+    bio = user.get("summary", "No bio available.")
+    
+    result = []
+    result.append(f"# {name} (@{username})")
+    result.append("")
+    result.append(bio)
+    result.append("")
+    result.append("## Profile Details")
+    
+    # Add optional fields if present
+    for field, label in [
+        ("location", "Location"),
+        ("joined_at", "Joined"),
+        ("twitter_username", "Twitter"),
+        ("github_username", "GitHub"),
+        ("website_url", "Website")
+    ]:
+        if user.get(field):
+            result.append(f"{label}: {user.get(field)}")
+    
+    return "\n".join(result)
+
+# Helper function to get API key from context
+def get_api_key(ctx: Context) -> str:
+    """Get the API key from the client context."""
+    if not ctx:
+        return None
+        
+    # Try to get API key from client environment
+    env = getattr(ctx, 'env', {})
+    if not env:
+        return None
+        
+    return env.get('DEVTO_API_KEY')
+
+# MCP Tool implementations
+
+@mcp.tool()
+async def browse_latest_articles(ctx: Context = None) -> str:
+    """Get the most recent articles from Dev.to."""
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        articles = await client.get("/articles/latest")
+        return format_article_list(articles)
+    except Exception as e:
+        logger.error(f"Error getting latest articles: {str(e)}")
+        raise MCPError(f"Failed to get latest articles: {str(e)}")
+
+@mcp.tool()
+async def browse_popular_articles(ctx: Context = None) -> str:
+    """Get the most popular articles from Dev.to."""
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        articles = await client.get("/articles")
+        return format_article_list(articles)
+    except Exception as e:
+        logger.error(f"Error getting popular articles: {str(e)}")
+        raise MCPError(f"Failed to get popular articles: {str(e)}")
+
+@mcp.tool()
+async def browse_articles_by_tag(
+    tag: Annotated[str, Field(description="The tag to filter articles by")],
+    ctx: Context = None
+) -> str:
+    """
+    Get articles with a specific tag.
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        articles = await client.get("/articles", params={"tag": tag})
+        return format_article_list(articles)
+    except Exception as e:
+        logger.error(f"Error getting articles by tag: {str(e)}")
+        raise MCPError(f"Failed to get articles with tag '{tag}': {str(e)}")
+
+@mcp.tool()
+async def get_article(
+    id: Annotated[str, Field(description="The ID of the article to retrieve")],
+    ctx: Context = None
+) -> str:
+    """
+    Get a specific article by ID.
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        # Try to get the article
+        try:
+            article = await client.get(f"/articles/{id}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise MCPError(f"Article not found with ID: {id}", 404)
+            else:
+                raise
+                
+        return format_article_detail(article)
+    except Exception as e:
+        logger.error(f"Error getting article {id}: {str(e)}")
+        raise MCPError(f"Failed to get article {id}: {str(e)}")
+
+@mcp.tool()
+async def get_user_profile(
+    username: Annotated[str, Field(description="The username of the Dev.to user")],
+    ctx: Context = None
+) -> str:
+    """
+    Get profile information for a Dev.to user.
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        user = await client.get(f"/users/by_username?url={username}")
+        return format_user_profile(user)
+    except Exception as e:
+        logger.error(f"Error getting user profile for {username}: {str(e)}")
+        raise MCPError(f"Failed to get profile for user '{username}': {str(e)}")
+
+@mcp.tool()
+async def search_articles(
+    query: Annotated[str, Field(description="The search term")],
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 30,
+    ctx: Context = None
+) -> str:
+    """
+    Search for articles on Dev.to across multiple pages.
+    
+    This tool will search through articles on Dev.to, looking through multiple
+    pages until it finds matches or reaches the maximum page limit.
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        # Track all matching articles
+        all_matching_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we find matches or reach the limit
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get("/articles", params={"page": current_page})
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Filter articles containing the query in title or description
+                page_matches = [
+                    article for article in articles
+                    if (query.lower() in article.get("title", "").lower() or
+                        query.lower() in article.get("description", "").lower() or
+                        (isinstance(article.get("tag_list"), list) and 
+                         any(query.lower() in tag.lower() for tag in article.get("tag_list", []))) or
+                        (isinstance(article.get("user"), dict) and
+                         query.lower() in article.get("user", {}).get("username", "").lower()) or
+                        query.lower() in article.get("body_markdown", "").lower())
+                ]
+                
+                # Add matching articles to our collection
+                all_matching_articles.extend(page_matches)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # If we've found some matches, we can stop searching
+                if all_matching_articles:
+                    break
+                    
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error searching page {current_page}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # If we didn't find anything through pagination, try direct search approaches
+        if not all_matching_articles:
+            # Try searching by tag if the query looks like a tag
+            try:
+                tag_articles = await client.get("/articles", params={"tag": query.lower()})
+                all_matching_articles.extend(tag_articles)
+            except Exception:
+                # Ignore errors in fallback searches
+                pass
+                
+            # If query looks like a username, try that
+            if not all_matching_articles and " " not in query:
+                try:
+                    user_articles = await client.get("/articles", params={"username": query.lower()})
+                    all_matching_articles.extend(user_articles)
+                except Exception:
+                    # Ignore errors in fallback searches
+                    pass
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_matching_articles)
+    except Exception as e:
+        logger.error(f"Error searching articles for '{query}': {str(e)}")
+        raise MCPError(f"Failed to search for '{query}': {str(e)}")
+
+@mcp.tool()
+async def search_articles_by_user(
+    username: Annotated[str, Field(description="The Dev.to username to search articles for")],
+    page: Annotated[int, Field(description="Page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    ctx: Context = None
+) -> str:
+    """
+    Get all articles published by a specific Dev.to user.
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        # Fetch articles by username directly from the API
+        articles = await client.get("/articles", params={
+            "username": username,
+            "page": page,
+            "per_page": per_page
+        })
+        
+        return format_article_list(articles)
+    except Exception as e:
+        logger.error(f"Error fetching articles for user '{username}': {str(e)}")
+        raise MCPError(f"Failed to get articles for user '{username}': {str(e)}")
+
+@mcp.tool()
+async def list_my_articles(
+    page: Annotated[int, Field(description="Page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    ctx: Context = None
+) -> str:
+    """
+    List your published articles.
+    """
+    try:
+        # Get API key from context
+        api_key = get_api_key(ctx)
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+        
+        # Create a client with the API key
+        client = DevToClient(api_key=api_key)
+        
+        articles = await client.get(
+            "/articles/me",
+            params={"page": page, "per_page": per_page}
+        )
+        return format_article_list(articles)
+    except Exception as e:
+        logger.error(f"Error listing user articles: {str(e)}")
+        raise MCPError(f"Failed to list your articles: {str(e)}")
+
+@mcp.tool()
+async def create_article(
+    title: Annotated[str, Field(description="The title of the article")],
+    content: Annotated[str, Field(description="The markdown content of the article")],
+    tags: Annotated[str, Field(description="Comma-separated list of tags (e.g., 'python,webdev')")] = "",
+    published: Annotated[bool, Field(description="Whether to publish immediately (default: False)")] = False,
+    ctx: Context = None
+) -> str:
+    """
+    Create a new article on Dev.to.
+    """
+    try:
+        # Get API key from context
+        api_key = get_api_key(ctx)
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+        
+        # Create a client with the API key
+        client = DevToClient(api_key=api_key)
+        
+        # Process tags
+        tag_list = []
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+        
+        # Prepare article data
+        article_data = {
+            "article": {
+                "title": title,
+                "body_markdown": content,
+                "published": published,
+                "tags": tag_list
+            }
+        }
+        
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=50, total=100)
+            
+        response = await client.post("/articles", article_data)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return (
+            f"Article created successfully!\n"
+            f"Title: {response.get('title')}\n"
+            f"ID: {response.get('id')}\n"
+            f"URL: {response.get('url')}\n"
+            f"Status: {'Published' if response.get('published') else 'Draft'}"
+        )
+    except Exception as e:
+        logger.error(f"Error creating article: {str(e)}")
+        raise MCPError(f"Failed to create article: {str(e)}")
+
+@mcp.tool()
+async def update_article(
+    id: Annotated[Union[str, int], Field(description="The ID of the article to update")],
+    title: Annotated[Optional[str], Field(description="New title for the article")] = None,
+    content: Annotated[Optional[str], Field(description="New markdown content")] = None,
+    tags: Annotated[Optional[str], Field(description="New comma-separated list of tags")] = None,
+    published: Annotated[Optional[bool], Field(description="New publish status")] = None,
+    ctx: Context = None
+) -> str:
+    """
+    Update an existing article on Dev.to.
+    """
+    try:
+        # Get API key from context
+        api_key = get_api_key(ctx)
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+        
+        # Create a client with the API key
+        client = DevToClient(api_key=api_key)
+        
+        # Prepare update data
+        article_data = {"article": {}}
+        
+        if title is not None:
+            article_data["article"]["title"] = title
+        
+        if content is not None:
+            article_data["article"]["body_markdown"] = content
+        
+        if tags is not None:
+            tag_list = [tag.strip() for tag in tags.split(",")]
+            article_data["article"]["tags"] = tag_list
+        
+        if published is not None:
+            article_data["article"]["published"] = published
+        
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=75, total=100)
+            
+        response = await client.put(f"/articles/{id}", article_data)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return (
+            f"Article updated successfully!\n"
+            f"Title: {response.get('title')}\n"
+            f"URL: {response.get('url')}\n"
+            f"Status: {'Published' if response.get('published') else 'Draft'}"
+        )
+    except Exception as e:
+        logger.error(f"Error updating article: {str(e)}")
+        raise MCPError(f"Failed to update article {id}: {str(e)}")
+
+@mcp.tool()
+async def get_article_by_id(
+    article_id: Annotated[str, Field(description="The ID of the article to retrieve (as a string)")],
+    ctx: Context = None
+) -> str:
+    """
+    Get a specific article by ID (string version).
+    """
+    try:
+        # Create a client with the API key from context (if available)
+        client = DevToClient(api_key=get_api_key(ctx))
+        
+        # Try to get the article
+        try:
+            article = await client.get(f"/articles/{article_id}")
+            return format_article_detail(article)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise MCPError(f"Article not found with ID: {article_id}", 404)
+            else:
+                raise
+    except Exception as e:
+        logger.error(f"Error getting article {article_id}: {str(e)}")
+        raise MCPError(f"Failed to get article {article_id}: {str(e)}")
+
+# API endpoints
+
+@app.get("/")
+async def root():
+    """Root endpoint with basic info."""
+    return {
+        "name": "Dev.to MCP Server",
+        "description": "MCP server for interacting with the Dev.to API",
+        "version": "1.0.0",
+        "endpoints": {
+            "sse": "/sse",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "ok",
+        "service": "Dev.to MCP Server",
+        "version": "1.0.0",
+    }
+
+# Main entry point - this is where we create our SSE transport
+if __name__ == "__main__":
+    # Log server startup information
+    logger.info(f"Server will be available at http://0.0.0.0:{PORT}")
+    logger.info(f"SSE endpoint: http://0.0.0.0:{PORT}/sse")
+    
+    # Using FastMCP's built-in run method with SSE transport
+    mcp.run(transport="sse", host="0.0.0.0", port=PORT) 
