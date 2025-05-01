@@ -283,27 +283,131 @@ def get_api_key(ctx: Context) -> str:
 # MCP Tool implementations
 
 @mcp.tool()
-async def browse_latest_articles(ctx: Context = None) -> str:
-    """Get the most recent articles from Dev.to."""
+async def browse_latest_articles(
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
+    ctx: Context = None
+) -> str:
+    """
+    Get the most recent articles from Dev.to across multiple pages.
+    
+    This tool will fetch recent articles from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
+    """
     try:
         # Create a client with the API key from context (if available)
         client = DevToClient(api_key=get_api_key(ctx))
         
-        articles = await client.get("/articles/latest")
-        return format_article_list(articles)
+        # Track all articles across multiple pages
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we reach the limit or run out of results
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get("/articles/latest", params={
+                    "page": current_page,
+                    "per_page": per_page
+                })
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Add articles to our collection
+                all_articles.extend(articles)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error fetching latest articles page {current_page}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_articles)
     except Exception as e:
         logger.error(f"Error getting latest articles: {str(e)}")
         raise MCPError(f"Failed to get latest articles: {str(e)}")
 
 @mcp.tool()
-async def browse_popular_articles(ctx: Context = None) -> str:
-    """Get the most popular articles from Dev.to."""
+async def browse_popular_articles(
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
+    ctx: Context = None
+) -> str:
+    """
+    Get the most popular articles from Dev.to across multiple pages.
+    
+    This tool will fetch popular articles from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
+    """
     try:
         # Create a client with the API key from context (if available)
         client = DevToClient(api_key=get_api_key(ctx))
         
-        articles = await client.get("/articles")
-        return format_article_list(articles)
+        # Track all articles across multiple pages
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we reach the limit or run out of results
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get("/articles", params={
+                    "page": current_page,
+                    "per_page": per_page
+                })
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Add articles to our collection
+                all_articles.extend(articles)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error fetching popular articles page {current_page}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_articles)
     except Exception as e:
         logger.error(f"Error getting popular articles: {str(e)}")
         raise MCPError(f"Failed to get popular articles: {str(e)}")
@@ -311,17 +415,66 @@ async def browse_popular_articles(ctx: Context = None) -> str:
 @mcp.tool()
 async def browse_articles_by_tag(
     tag: Annotated[str, Field(description="The tag to filter articles by")],
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
 ) -> str:
     """
-    Get articles with a specific tag.
+    Get articles with a specific tag across multiple pages.
+    
+    This tool will fetch articles with the specified tag from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
     """
     try:
         # Create a client with the API key from context (if available)
         client = DevToClient(api_key=get_api_key(ctx))
         
-        articles = await client.get("/articles", params={"tag": tag})
-        return format_article_list(articles)
+        # Track all articles across multiple pages
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we reach the limit or run out of results
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get("/articles", params={
+                    "tag": tag,
+                    "page": current_page,
+                    "per_page": per_page
+                })
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Add articles to our collection
+                all_articles.extend(articles)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error fetching articles with tag '{tag}' on page {current_page}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_articles)
     except Exception as e:
         logger.error(f"Error getting articles by tag: {str(e)}")
         raise MCPError(f"Failed to get articles with tag '{tag}': {str(e)}")
@@ -470,37 +623,82 @@ async def search_articles(
 @mcp.tool()
 async def search_articles_by_user(
     username: Annotated[str, Field(description="The Dev.to username to search articles for")],
-    page: Annotated[int, Field(description="Page number for pagination")] = 1,
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 30,
     ctx: Context = None
 ) -> str:
     """
     Get all articles published by a specific Dev.to user.
+    
+    This tool will search through all articles by a user, looking through multiple
+    pages until it reaches the maximum page limit.
     """
     try:
         # Create a client with the API key from context (if available)
         client = DevToClient(api_key=get_api_key(ctx))
         
-        # Fetch articles by username directly from the API
-        articles = await client.get("/articles", params={
-            "username": username,
-            "page": page,
-            "per_page": per_page
-        })
+        # Track all articles across multiple pages
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
         
-        return format_article_list(articles)
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we reach the limit or run out of results
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get("/articles", params={
+                    "username": username,
+                    "page": current_page,
+                    "per_page": per_page
+                })
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Add articles to our collection
+                all_articles.extend(articles)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error searching page {current_page} for user {username}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_articles)
     except Exception as e:
         logger.error(f"Error fetching articles for user '{username}': {str(e)}")
         raise MCPError(f"Failed to get articles for user '{username}': {str(e)}")
 
 @mcp.tool()
 async def list_my_articles(
-    page: Annotated[int, Field(description="Page number for pagination")] = 1,
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
     per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
     ctx: Context = None
 ) -> str:
     """
-    List your published articles.
+    List your published articles across multiple pages.
+    
+    This tool will fetch your articles from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
     """
     try:
         # Get API key from context
@@ -511,11 +709,50 @@ async def list_my_articles(
         # Create a client with the API key
         client = DevToClient(api_key=api_key)
         
-        articles = await client.get(
-            "/articles/me",
-            params={"page": page, "per_page": per_page}
-        )
-        return format_article_list(articles)
+        # Track all articles across multiple pages
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        
+        # Report initial progress
+        if ctx:
+            await ctx.report_progress(progress=10, total=100)
+            
+        # Search through pages until we reach the limit or run out of results
+        while current_page <= max_page_to_search:
+            try:
+                # Fetch articles for the current page
+                articles = await client.get(
+                    "/articles/me",
+                    params={"page": current_page, "per_page": per_page}
+                )
+                
+                # If we received no articles, we've reached the end
+                if not articles or len(articles) == 0:
+                    break
+                    
+                # Add articles to our collection
+                all_articles.extend(articles)
+                
+                # Update progress periodically
+                if ctx:
+                    progress = min(90, int(10 + (current_page - page) / max_pages * 80))
+                    await ctx.report_progress(progress=progress, total=100)
+                
+                # Move to the next page
+                current_page += 1
+                
+            except Exception as e:
+                logger.warning(f"Error fetching your articles on page {current_page}: {str(e)}")
+                # Continue to the next page even if there's an error
+                current_page += 1
+        
+        # Complete progress
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            
+        # Return the formatted results
+        return format_article_list(all_articles)
     except Exception as e:
         logger.error(f"Error listing user articles: {str(e)}")
         raise MCPError(f"Failed to list your articles: {str(e)}")
