@@ -26,6 +26,10 @@ import json
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional, Union, Annotated, Iterator
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 import httpx
 from fastapi import FastAPI, Request, Response
@@ -137,20 +141,10 @@ mcp = FastMCP(
     ## Required Configuration
     
     This MCP server requires a Dev.to API key to function properly.
-    Please provide your Dev.to API key in the client configuration:
+    Please provide your Dev.to API key in the server environment:
     
-    ```json
-    {
-      "mcpServers": {
-        "devto": {
-          "transport": "sse",
-          "url": "http://localhost:8000/sse",
-          "env": {
-            "DEVTO_API_KEY": "your_dev_to_api_key_here"
-          }
-        }
-      }
-    }
+    ```bash
+    export DEVTO_API_KEY="your_dev_to_api_key_here"
     ```
     
     ## Available Tools
@@ -267,18 +261,10 @@ def format_user_profile(user: Dict[str, Any]) -> str:
     
     return "\n".join(result)
 
-# Helper function to get API key from context
-def get_api_key(ctx: Context) -> str:
-    """Get the API key from the client context."""
-    if not ctx:
-        return None
-        
-    # Try to get API key from client environment
-    env = getattr(ctx, 'env', {})
-    if not env:
-        return None
-        
-    return env.get('DEVTO_API_KEY')
+# Helper function to get API key from server environment
+def get_api_key() -> str:
+    """Get the API key from server environment."""
+    return os.environ.get('DEVTO_API_KEY')
 
 # Helper class for returning structured data directly (without using MCPResponse)
 class ArticleListResponse:
@@ -322,8 +308,8 @@ async def browse_latest_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Track all articles across multiple pages
         all_articles = []
@@ -388,8 +374,8 @@ async def browse_popular_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Track all articles across multiple pages
         all_articles = []
@@ -455,8 +441,8 @@ async def browse_articles_by_tag(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Track all articles across multiple pages
         all_articles = []
@@ -517,8 +503,8 @@ async def get_article(
     Get a specific article by ID.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Try to get the article
         try:
@@ -543,8 +529,8 @@ async def get_user_profile(
     Get profile information for a Dev.to user.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         user = await client.get(f"/users/by_username?url={username}")
         return format_user_profile(user)
@@ -566,8 +552,8 @@ async def search_articles(
     pages until it finds matches or reaches the maximum page limit.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Track all matching articles
         all_matching_articles = []
@@ -668,8 +654,8 @@ async def search_articles_by_user(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Track all articles across multiple pages
         all_articles = []
@@ -735,10 +721,10 @@ async def list_my_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Get API key from context
-        api_key = get_api_key(ctx)
+        # Get API key from server environment
+        api_key = get_api_key()
         if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
         # Create a client with the API key
         client = DevToClient(api_key=api_key)
@@ -804,10 +790,10 @@ async def create_article(
     Create a new article on Dev.to.
     """
     try:
-        # Get API key from context
-        api_key = get_api_key(ctx)
+        # Get API key from server environment
+        api_key = get_api_key()
         if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
         # Create a client with the API key
         client = DevToClient(api_key=api_key)
@@ -865,10 +851,10 @@ async def update_article(
     Update an existing article on Dev.to.
     """
     try:
-        # Get API key from context
-        api_key = get_api_key(ctx)
+        # Get API key from server environment
+        api_key = get_api_key()
         if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your client configuration.", 401)
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
         # Create a client with the API key
         client = DevToClient(api_key=api_key)
@@ -922,8 +908,8 @@ async def get_article_by_id(
     Get a specific article by ID (string version).
     """
     try:
-        # Create a client with the API key from context (if available)
-        client = DevToClient(api_key=get_api_key(ctx))
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
         
         # Try to get the article
         try:

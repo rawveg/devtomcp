@@ -156,6 +156,28 @@ This ensures that all operations happen under the client's own Dev.to account.
 
 ---
 
+## ⚠️ **IMPORTANT: Single-User Configuration**
+This server is designed for single-user deployment. Your Dev.to API key is stored server-side and all operations will be performed using this key.
+
+## 🔐 Security Requirements
+
+Before deploying this server, you MUST understand and implement appropriate security measures:
+
+1. **API Key Protection**
+   - Your Dev.to API key will be stored server-side
+   - All operations will use this single API key
+   - Unauthorized access could compromise your Dev.to account
+   - Regular key rotation is strongly recommended
+
+2. **Required Security Measures**
+   - Do NOT deploy without implementing AT LEAST ONE of these security controls:
+     1. [Cloud Run Authentication](https://cloud.google.com/run/docs/authenticating/overview)
+     2. [Identity-Aware Proxy (IAP)](https://cloud.google.com/iap/docs/cloud-run-tutorial)
+     3. [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/overview)
+     4. [Ingress Controls](https://cloud.google.com/run/docs/securing/ingress)
+
+---
+
 ## 7️⃣ Step 7: Configure Environment Variables (Optional)
 
 To update environment variables after deployment:
@@ -220,3 +242,51 @@ if __name__ == "__main__":
 2. **Connection Timeouts:** Cloud Run has a default timeout of 5 minutes. If your operations take longer, adjust the timeout settings
 3. **Memory Limits:** Default memory allocation might be insufficient for heavy loads
 4. **CORS Issues:** If accessing from browser clients, ensure proper CORS headers are configured 
+
+## 🔒 Implementing Security Controls
+
+### Option 1: Cloud Run Authentication
+```bash
+# Remove public access
+gcloud run services update dev-to-mcp \
+  --no-allow-unauthenticated
+
+# Grant access to specific users/service accounts
+gcloud run services add-iam-policy-binding dev-to-mcp \
+  --member="user:your-email@example.com" \
+  --role="roles/run.invoker"
+```
+
+### Option 2: Identity-Aware Proxy (IAP)
+1. Set up OAuth consent screen
+2. Configure IAP
+3. Create OAuth credentials
+4. Enable IAP for your Cloud Run service
+
+### Option 3: VPC Service Controls
+1. Create a VPC network
+2. Configure service perimeter
+3. Add Cloud Run service to perimeter
+4. Set up authorized networks
+
+### Option 4: Ingress Controls
+```bash
+# Restrict to internal traffic and load balancers
+gcloud run services update dev-to-mcp \
+  --ingress=internal-and-cloud-load-balancing
+```
+
+## ⚠️ Security Disclaimer
+
+By deploying this server, you acknowledge:
+1. This is a single-user server - all operations use your API key
+2. You are responsible for implementing proper security controls
+3. The maintainers are not liable for unauthorized access or API key misuse
+4. Regular security audits and key rotation are your responsibility
+
+## 📚 Additional Resources
+
+- [Cloud Run Security Overview](https://cloud.google.com/run/docs/securing/security-overview)
+- [Secret Manager Documentation](https://cloud.google.com/secret-manager/docs)
+- [IAP Documentation](https://cloud.google.com/iap/docs)
+- [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/overview)
