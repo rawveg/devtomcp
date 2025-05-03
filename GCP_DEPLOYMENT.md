@@ -4,63 +4,14 @@ This guide provides step-by-step instructions for deploying the Dev.to MCP Serve
 
 ---
 
-## 📚 Table of Contents
-- [Prerequisites](#prerequisites)
-- [Step 1: Set Up Environment Variables](#step-1-set-up-environment-variables)
-- [Step 2: Build and Test Locally](#step-2-build-and-test-locally)
-- [Step 3: Set Up Google Cloud Project](#step-3-set-up-google-cloud-project)
-- [Step 4: Build and Push the Docker Image](#step-4-build-and-push-the-docker-image)
-- [Step 5: Deploy to Google Cloud Run](#step-5-deploy-to-google-cloud-run)
-- [Step 6: Access Your Deployed Service](#step-6-access-your-deployed-service)
-- [Client Authentication](#client-authentication)
-- [Step 7: Configure Environment Variables (Optional)](#step-7-configure-environment-variables-optional)
-- [Step 8: Set Up Continuous Deployment (Optional)](#step-8-set-up-continuous-deployment-optional)
-- [Troubleshooting](#troubleshooting)
-
----
-
 ## ✅ Prerequisites
 
 - Google Cloud Platform account with billing enabled
 - Google Cloud SDK installed and configured locally
-- Docker installed locally (for building and testing)
-- **Optional:** Default Dev.to API key as fallback
 
 ---
 
-## 1️⃣ Step 1: Set Up Environment Variables
-
-Create a `.env` file for local development:
-
-```env
-# Optional fallback API key, only used when clients don't provide their own
-DEVTO_API_KEY=your_api_key_here
-```
-
-> **Note:**
-> - Never commit this file to version control!
-> - The server API key is optional and only used as a fallback when clients don't provide their own.
-> - Each client should provide their own API key in their requests.
-
----
-
-## 2️⃣ Step 2: Build and Test Locally
-
-Before deploying to Google Cloud Run, test the Docker container locally:
-
-```bash
-docker-compose up --build
-
-# Test with curl
-curl http://localhost:8000/health
-
-# Test with client API key
-curl -H "devto-api-key: your_personal_api_key" http://localhost:8000/sse
-```
-
----
-
-## 3️⃣ Step 3: Set Up Google Cloud Project
+## 3️⃣ Step 1: Set Up Google Cloud Project
 
 If you haven't already, create a new project or select an existing one:
 
@@ -82,36 +33,34 @@ gcloud services enable artifactregistry.googleapis.com
 
 ---
 
-## 4️⃣ Step 4: Build and Push the Docker Image
-
-Build and push the Docker image to Google Container Registry:
-
-```bash
-gcloud builds submit --tag gcr.io/[PROJECT_ID]/dev-to-mcp:latest .
-```
-
----
-
-## 5️⃣ Step 5: Deploy to Google Cloud Run
+## 2️⃣ Step 2: Deploy to Google Cloud Run
 
 Deploy the container to Google Cloud Run:
 
 ```bash
 # Build from source
+```bash
 gcloud run deploy devtomcp \
-  --source ./ \
+  --source . \
   --platform managed \
-  --region [REGION] \
   --allow-unauthenticated \
-  --set-env-vars="PORT=8080,LOG_LEVEL=INFO" 
+  --region [REGION] \
+  --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
+  --set-env-vars="DEVTO_API_KEY=<<DEVTO_API_KEY>>" \
+  --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
+  --format="json"
 ```
 
 Replace:
 - `[REGION]` with your preferred Google Cloud region (e.g., `us-central1`)
+- `<<LOG_LEVEL>>` with your preferred log level (e.g., `INFO`)
+- `<<DEVTO_API_KEY>>` with your Dev.to API key
+- `<<DEVTO_API_BASE_URL>>` with your Dev.to API base URL (e.g., `https://dev.to/api`)
+
 
 ---
 
-## 6️⃣ Step 6: Access Your Deployed Service
+## 2️⃣ Step 3: Access Your Deployed Service
 
 After successful deployment, Google Cloud Run will provide a URL for your service:
 
@@ -136,10 +85,7 @@ When connecting to the deployed MCP server, clients need to provide their own De
 from fastmcp.transports.sse import SSEClient
 
 # Connect with API key in header
-client = SSEClient(
-    "https://dev-to-mcp-abcdefg123-uc.a.run.app/sse",
-    headers={"devto-api-key": "client_api_key_here"}
-)
+client = SSEClient("https://dev-to-mcp-abcdefg123-uc.a.run.app/sse")
 
 # Or API key in parameters for specific operations
 result = await client.call(
@@ -217,11 +163,8 @@ import asyncio
 from fastmcp.transports.sse import SSEClient
 
 async def test_mcp():
-    # Include your personal Dev.to API key
-    headers = {"devto-api-key": "your_api_key_here"}
-    
     # Connect to the deployed service
-    client = SSEClient("https://dev-to-mcp-abcdefg123-uc.a.run.app/sse", headers=headers)
+    client = SSEClient("https://dev-to-mcp-abcdefg123-uc.a.run.app/sse")
     await client.initialize()
     
     # Public endpoints don't require authentication
