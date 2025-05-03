@@ -171,10 +171,28 @@ For deploying to Google Cloud Run:
 3. Deploy with the secret mounted:
    ```bash
    gcloud run deploy devtomcp \
-     --source . \
-     --set-secrets=DEVTO_API_KEY=devto-api-key:latest \
-     --allow-unauthenticated
+      --source . \
+      --platform managed \
+      --allow-unauthenticated \
+      --region [REGION] \
+      --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
+      --set-env-vars="DEVTO_API_KEY=<<DEVTO_API_KEY>>" \
+      --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
+      --format="json"
    ```
+
+   **Environment Variables**
+   
+   | Variable | Description | Default |
+   | --- | --- | --- |
+   | `LOG_LEVEL` | Logging level (INFO, DEBUG, etc.) | `INFO` |
+   | `DEVTO_API_KEY` | Dev.to API key | `None` |
+   | `DEVTO_API_BASE_URL` | Dev.to API base URL | `https://dev.to/api` |
+
+   These variables must be set on the command line for gcloud run deploy as the .env file is not mounted to the container.
+
+  **Region Selection**
+  The region should be selected according to the region of your associated project. A list of available regions can be found [here](https://cloud.google.com/run/docs/locations).
 
 ⚠️ **Security Warning:** 
 - The `--allow-unauthenticated` flag makes your server publicly accessible
