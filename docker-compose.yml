@@ -2,7 +2,7 @@ services:
   devto-mcp:
     build: .
     ports:
-      - "8000:8000"
+      - "${PORT}:${PORT}"
     env_file:
       - .env
     environment:
