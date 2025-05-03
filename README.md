@@ -109,11 +109,7 @@ Add the MCP server in Claude Desktop's `config.json`:
 {
   "mcpServers": {
     "devto": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse",
-      "env": {
-        "DEVTO_API_KEY": "your_dev_to_api_key_here"
-      }
+      "url": "http://localhost:8000/sse"
     }
   }
 }
@@ -127,15 +123,15 @@ Add the MCP server in Cursor's configuration:
 {
   "mcpServers": {
     "devto": {
-      "transport": "sse",
-      "url": "http://localhost:8000/sse",
-      "env": {
-        "DEVTO_API_KEY": "your_dev_to_api_key_here"
-      }
+      "url": "http://localhost:8000/sse"
     }
   }
 }
 ```
+
+**NOTE** 
+
+Some clients may require the use of `serverUrl` instead of `url`, eg: Windsurf IDE by Codium.
 
 ### Programmatic Access with Python
 
@@ -167,18 +163,28 @@ if __name__ == "__main__":
 
 For deploying to Google Cloud Run:
 
-```bash
-# Build from source
-gcloud run deploy devtomcp \
-  --source ./ \
-  --platform managed \
-  --region [REGION] \
-  --allow-unauthenticated \
-  --set-env-vars="PORT=8080,LOG_LEVEL=INFO" 
-```
+1. Follow the [Google Cloud Run Quickstart](https://cloud.google.com/run/docs/quickstarts/build-and-deploy) to set up your environment
+2. Set up your Dev.to API key as a secret:
+   ```bash
+   gcloud secrets create devto-api-key --data-file=- <<< "your_api_key_here"
+   ```
+3. Deploy with the secret mounted:
+   ```bash
+   gcloud run deploy devtomcp \
+     --source . \
+     --set-secrets=DEVTO_API_KEY=devto-api-key:latest \
+     --allow-unauthenticated
+   ```
 
-Replace:
-- `[REGION]` with your preferred Google Cloud region (e.g., `us-central1`)
+⚠️ **Security Warning:** 
+- The `--allow-unauthenticated` flag makes your server publicly accessible
+- Since this is a single-user server with your API key, you MUST implement additional security measures:
+  - Use [Cloud Run Authentication](https://cloud.google.com/run/docs/authenticating/overview)
+  - Set up [Identity-Aware Proxy (IAP)](https://cloud.google.com/iap/docs/cloud-run-tutorial)
+  - Configure [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/overview)
+  - Use [Ingress Controls](https://cloud.google.com/run/docs/securing/ingress)
+
+See [GCP_DEPLOYMENT.md](./GCP_DEPLOYMENT.md) for detailed security configuration instructions.
 
 ---
 
@@ -227,4 +233,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📬 Contact
 
-For questions, suggestions, or support, please open an issue
+For questions, suggestions, or support, please open an issue or contact the maintainer at [your.email@example.com](mailto:your.email@example.com). 
