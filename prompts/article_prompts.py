@@ -7,6 +7,10 @@ def get_article_prompt(article_id: str) -> str:
     """Create a prompt to get a specific article"""
     return f"Please get the Dev.to article with ID {article_id} and provide a summary of its key points and insights."
 
+def get_article_by_title_prompt(article_title: str) -> str:
+    """Create a prompt to get a specific article by title"""
+    return f"Please get the Dev.to article with title '{article_title}' and provide a summary of its key points and insights."
+
 def list_my_articles_prompt(page: Optional[int] = 1, per_page: Optional[int] = 30) -> str:
     """Create a prompt to list my published articles"""
     if page == 1 and per_page == 30:
@@ -59,3 +63,53 @@ def search_articles_prompt(query: str) -> str:
 def analyze_article(article_id: str) -> str:
     """Create a prompt to analyze a specific article"""
     return f"Please analyze the Dev.to article with ID {article_id} and provide a summary of its key points and insights."
+
+def list_my_draft_articles_prompt(page: Optional[int] = 1, per_page: Optional[int] = 30) -> str:
+    """Create a prompt to list draft articles"""
+    if page == 1 and per_page == 30:
+        return "Please list my draft articles on Dev.to."
+    elif page == 1:
+        return f"Please list my draft articles on Dev.to, showing {per_page} articles per page."
+    elif per_page == 30:
+        return f"Please list my draft articles on Dev.to, starting from page {page}."
+    else:
+        return f"Please list my draft articles on Dev.to, showing {per_page} articles per page starting from page {page}."
+
+def list_my_unpublished_articles_prompt(page: Optional[int] = 1, per_page: Optional[int] = 30) -> str:
+    """Create a prompt to list unpublished articles"""
+    if page == 1 and per_page == 30:
+        return "Please list my unpublished articles on Dev.to."
+    elif page == 1:
+        return f"Please list my unpublished articles on Dev.to, showing {per_page} articles per page."
+    elif per_page == 30:
+        return f"Please list my unpublished articles on Dev.to, starting from page {page}."
+    else:
+        return f"Please list my unpublished articles on Dev.to, showing {per_page} articles per page starting from page {page}."
+
+def list_my_scheduled_articles_prompt(page: Optional[int] = 1, per_page: Optional[int] = 30) -> str:
+    """Create a prompt to list scheduled articles"""
+    if page == 1 and per_page == 30:
+        return "Please list my scheduled articles on Dev.to."
+    elif page == 1:
+        return f"Please list my scheduled articles on Dev.to, showing {per_page} articles per page."
+    elif per_page == 30:
+        return f"Please list my scheduled articles on Dev.to, starting from page {page}."
+    else:
+        return f"Please list my scheduled articles on Dev.to, showing {per_page} articles per page starting from page {page}."
+
+def publish_article_prompt(article_id: str) -> str:
+    """Create a prompt to publish an article"""
+    return f"Please publish the article with ID {article_id} on Dev.to."
+
+def publish_article_by_title_prompt(title: str) -> str:
+    """Create a prompt to publish an article by title"""
+    return f"Please publish the article with title '{title}' on Dev.to."
+
+def unpublish_article_prompt(article_id: str) -> str:
+    """Create a prompt to unpublish an article"""
+    return f"Please unpublish the article with ID {article_id} on Dev.to."
+
+def unpublish_article_by_title_prompt(title: str) -> str:
+    """Create a prompt to unpublish an article by title"""
+    return f"Please unpublish the article with title '{title}' on Dev.to."
+    
