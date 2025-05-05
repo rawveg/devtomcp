@@ -191,32 +191,85 @@ from prompts.user_prompts import (
     analyze_user_profile_by_id
 )
 
+# Register prompts with MCP server
+get_article_prompt = mcp.prompt()(get_article_prompt)
+list_my_articles_prompt = mcp.prompt()(list_my_articles_prompt)
+create_article_prompt = mcp.prompt()(create_article_prompt)
+update_article_prompt = mcp.prompt()(update_article_prompt)
+delete_article_prompt = mcp.prompt()(delete_article_prompt)
+get_article_by_id_prompt = mcp.prompt()(get_article_by_id_prompt)
+search_articles_prompt = mcp.prompt()(search_articles_prompt)
+analyze_article = mcp.prompt()(analyze_article)
+get_user_profile_prompt = mcp.prompt()(get_user_profile_prompt)
+analyze_user_profile = mcp.prompt()(analyze_user_profile)
+analyze_user_profile_by_id = mcp.prompt()(analyze_user_profile_by_id)
+
 # Helper functions for formatting responses
-def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Format a single article with full details and return a structured JSON object.
+def format_article_list(articles: List[Dict[str, Any]]) -> str:
+    """Format a list of articles for display."""
+    if not articles:
+        return "No articles found."
+        
+    result = []
+    result.append("# Articles")
+    result.append("")
     
-    Args:
-        article (Dict[str, Any]): A dictionary containing article details retrieved from the API.
+    for article in articles:
+        title = article.get("title", "Untitled")
+        id = article.get("id", "Unknown ID")
+        username = article.get("user", {}).get("username", "unknown")
+        date = article.get("published_at", "Unknown date")
+        tags = article.get("tag_list", [])
+        tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+        
+        result.append(f"## {title}")
+        result.append(f"ID: {id}")
+        result.append(f"Author: {username}")
+        result.append(f"Published: {date}")
+        result.append(f"Tags: {tags_str}")
+        result.append(f"URL: {article.get('url', '')}")
+        result.append("")
+        result.append(article.get("description", "No description available."))
+        result.append("")
     
-    Returns:
-        Dict[str, Any]: A structured JSON object with the following keys:
-            - title (str): The title of the article.
-            - id (str): The unique identifier of the article.
-            - author (str): The username of the article's author.
-            - published_at (str): The publication date of the article.
-            - tags (List[str]): A list of tags associated with the article.
-            - url (str): The URL of the article.
-            - content (str): The Markdown content of the article.
-            - description (str): A short description of the article.
-            - comments_count (int): The number of comments on the article.
-            - public_reactions_count (int): The number of public reactions to the article.
-            - page_views_count (int): The number of page views for the article.
-            - published (bool): Whether the article is published.
-            - organization (Optional[Dict[str, Any]]): Information about the organization associated with the article, if any.
-    """
+    return "\n".join(result)
+
+def format_article_detail(article: Dict[str, Any]) -> str:
+    """Format a single article with full details."""
+def format_article_list(articles: List[Dict[str, Any]]) -> str:
+    """Format a list of articles for display."""
+    if not articles:
+        return "No articles found."
+        
+    result = []
+    result.append("# Articles")
+    result.append("")
+    
+    for article in articles:
+        title = article.get("title", "Untitled")
+        id = article.get("id", "Unknown ID")
+        username = article.get("user", {}).get("username", "unknown")
+        date = article.get("published_at", "Unknown date")
+        tags = article.get("tag_list", [])
+        tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+        
+        result.append(f"## {title}")
+        result.append(f"ID: {id}")
+        result.append(f"Author: {username}")
+        result.append(f"Published: {date}")
+        result.append(f"Tags: {tags_str}")
+        result.append(f"URL: {article.get('url', '')}")
+        result.append("")
+        result.append(article.get("description", "No description available."))
+        result.append("")
+    
+    return "\n".join(result)
+
+def format_article_detail(article: Dict[str, Any]) -> str:
+    """Format a single article with full details."""
     if not article:
-        return {"error": "Article not found."}
+        return "Article not found."
+        return "Article not found."
         
     return {
         "title": article.get("title", "Untitled"),

@@ -7,17 +7,42 @@ def get_article_prompt(article_id: str) -> str:
     """Create a prompt to get a specific article"""
     return f"Please get the Dev.to article with ID {article_id} and provide a summary of its key points and insights."
 
-def list_my_articles_prompt(page: int, per_page: int) -> str:
+def list_my_articles_prompt(page: Optional[int] = 1, per_page: Optional[int] = 30) -> str:
     """Create a prompt to list my published articles"""
-    return f"Please list my published articles on Dev.to and provide a summary of its key points and insights."
+    if page == 1 and per_page == 30:
+        return "Please list my published articles on Dev.to."
+    elif page == 1:
+        return f"Please list my published articles on Dev.to, showing {per_page} articles per page."
+    elif per_page == 30:
+        return f"Please list my published articles on Dev.to, starting from page {page}."
+    else:
+        return f"Please list my published articles on Dev.to, showing {per_page} articles per page starting from page {page}."
 
-def create_article_prompt(title: str, content: str, tags: str, published: bool) -> str:
+def create_article_prompt(title: str, content: str, tags: Optional[str] = "", published: Optional[bool] = False) -> str:
     """Create a prompt to create a new article"""
-    return f"Please create a new article on Dev.to with title {title}, content {content}, tags {tags}, and published {published}."
+    prompt = f"Please create a new article on Dev.to with title '{title}' and content: {content}"
+    if tags:
+        prompt += f", tagged with: {tags}"
+    if published:
+        prompt += " and publish it immediately"
+    else:
+        prompt += " as a draft"
+    return prompt + "."
 
-def update_article_prompt(id: str, title: str, content: str, tags: str, published: bool) -> str:
+def update_article_prompt(id: str, title: Optional[str] = None, content: Optional[str] = None, 
+                        tags: Optional[str] = None, published: Optional[bool] = None) -> str:
     """Create a prompt to update an existing article"""
-    return f"Please update the article with ID {id} on Dev.to with title {title}, content {content}, tags {tags}, and published {published}."
+    prompt = f"Please update the article with ID {id} on Dev.to with the following changes:"
+    changes = []
+    if title is not None:
+        changes.append(f"new title: '{title}'")
+    if content is not None:
+        changes.append(f"new content: {content}")
+    if tags is not None:
+        changes.append(f"new tags: {tags}")
+    if published is not None:
+        changes.append("publish it" if published else "save as draft")
+    return prompt + " " + ", ".join(changes) + "."
 
 def delete_article_prompt(id: str) -> str:
     """Create a prompt to delete an existing article"""
