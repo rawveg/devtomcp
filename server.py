@@ -193,7 +193,28 @@ from prompts.user_prompts import (
 
 # Helper functions for formatting responses
 def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
-    """Format a single article with full details."""
+    """
+    Format a single article with full details and return a structured JSON object.
+    
+    Args:
+        article (Dict[str, Any]): A dictionary containing article details retrieved from the API.
+    
+    Returns:
+        Dict[str, Any]: A structured JSON object with the following keys:
+            - title (str): The title of the article.
+            - id (str): The unique identifier of the article.
+            - author (str): The username of the article's author.
+            - published_at (str): The publication date of the article.
+            - tags (List[str]): A list of tags associated with the article.
+            - url (str): The URL of the article.
+            - content (str): The Markdown content of the article.
+            - description (str): A short description of the article.
+            - comments_count (int): The number of comments on the article.
+            - public_reactions_count (int): The number of public reactions to the article.
+            - page_views_count (int): The number of page views for the article.
+            - published (bool): Whether the article is published.
+            - organization (Optional[Dict[str, Any]]): Information about the organization associated with the article, if any.
+    """
     if not article:
         return {"error": "Article not found."}
         
