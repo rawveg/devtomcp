@@ -154,36 +154,70 @@ mcp = FastMCP(
     - browse_latest_articles(): Get recent articles from Dev.to
     - browse_popular_articles(): Get popular articles
     - browse_articles_by_tag(tag): Get articles with a specific tag
+    - browse_articles_by_title(title): Get articles with a specific title
     
     ### Reading Content  
     - get_article(id): Get article details by ID
+    - get_article_by_title(title): Get article details by title
     - get_user_profile(username): Get information about a Dev.to user
+    - get_article_by_id(id): Get article details by ID
+    - analyze_article(id): Analyze a specific article
+    - analyze_user_profile(username): Analyze a specific user profile
+
     
     ### Searching Content
     - search_articles(query, page): Search for articles by keywords
     
     ### Managing Content
     - list_my_articles(page, per_page): List your published articles
+    - list_my_draft_articles(page, per_page): List your draft articles
+    - list_my_unpublished_articles(page, per_page): List your unpublished articles
+    - list_my_scheduled_articles(page, per_page): List your scheduled articles
     - create_article(title, content, tags, published): Create a new article
     - update_article(id, title, content, tags, published): Update an existing article
+    - delete_article(id): Delete an existing article
+    - publish_article(id): Publish an existing article
+    - publish_article_by_title(title): Publish an existing article by title
+    - unpublish_article(id): Unpublish an existing article
+    - unpublish_article_by_title(title): Unpublish an existing article by title
     
     ## Examples
     - To find Python articles: search_articles("python")
     - To get an article: get_article(12345)
+    - To get an article by title: get_article_by_title("Title")
     - To create an article: create_article("Title", "Content", "tag1,tag2", false)
+    - To update an article: update_article(12345, "Title", "Content", "tag1,tag2", false)
     - To see your articles: list_my_articles()
+    - To see your draft articles: list_my_draft_articles()
+    - To see your unpublished articles: list_my_unpublished_articles()
+    - To see your scheduled articles: list_my_scheduled_articles()
+    - To delete an article: delete_article(12345)
+    - To publish an article: publish_article(12345)
+    - To publish an article by title: publish_article_by_title("Title")
+    - To unpublish an article: unpublish_article(12345)
+    - To unpublish an article by title: unpublish_article_by_title("Title")
+    - To get user profile: get_user_profile("username")
+    - To search articles: search_articles("query")
     """
 )
 
 # Import prompts from the new modules
 from prompts.article_prompts import (
     get_article_prompt,
+    get_article_by_title_prompt,
     list_my_articles_prompt,
+    list_my_draft_articles_prompt,
+    list_my_unpublished_articles_prompt,
+    list_my_scheduled_articles_prompt,
     create_article_prompt,
     update_article_prompt,
     delete_article_prompt,
     get_article_by_id_prompt,
     search_articles_prompt,
+    publish_article_prompt,
+    publish_article_by_title_prompt,
+    unpublish_article_prompt,
+    unpublish_article_by_title_prompt,
     analyze_article
 )
 from prompts.user_prompts import (
@@ -194,7 +228,11 @@ from prompts.user_prompts import (
 
 # Register prompts with MCP server
 get_article_prompt = mcp.prompt()(get_article_prompt)
+get_article_by_title_prompt = mcp.prompt()(get_article_by_title_prompt)
 list_my_articles_prompt = mcp.prompt()(list_my_articles_prompt)
+list_my_draft_articles_prompt = mcp.prompt()(list_my_draft_articles_prompt)
+list_my_unpublished_articles_prompt = mcp.prompt()(list_my_unpublished_articles_prompt)
+list_my_scheduled_articles_prompt = mcp.prompt()(list_my_scheduled_articles_prompt)
 create_article_prompt = mcp.prompt()(create_article_prompt)
 update_article_prompt = mcp.prompt()(update_article_prompt)
 delete_article_prompt = mcp.prompt()(delete_article_prompt)
@@ -204,6 +242,10 @@ analyze_article = mcp.prompt()(analyze_article)
 get_user_profile_prompt = mcp.prompt()(get_user_profile_prompt)
 analyze_user_profile = mcp.prompt()(analyze_user_profile)
 analyze_user_profile_by_id = mcp.prompt()(analyze_user_profile_by_id)
+publish_article_prompt = mcp.prompt()(publish_article_prompt)
+publish_article_by_title_prompt = mcp.prompt()(publish_article_by_title_prompt)
+unpublish_article_prompt = mcp.prompt()(unpublish_article_prompt)
+unpublish_article_by_title_prompt = mcp.prompt()(unpublish_article_by_title_prompt)
 
 # Helper functions for formatting responses
 def format_article_list(articles: List[Dict[str, Any]]) -> str:
@@ -270,7 +312,6 @@ def format_article_detail(article: Dict[str, Any]) -> str:
     """Format a single article with full details."""
     if not article:
         return "Article not found."
-        return "Article not found."
         
     return {
         "title": article.get("title", "Untitled"),
@@ -287,6 +328,21 @@ def format_article_detail(article: Dict[str, Any]) -> str:
         "published": article.get("published", False),
         "organization": article.get("organization", None)
     }
+
+async def find_all_my_articles() -> List[Dict[str, Any]]:
+    """
+    Retrieve all articles (published, drafts, scheduled) belonging to the authenticated user.
+    """
+    try:
+        api_key = get_api_key()
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
+        client = DevToClient(api_key=api_key)
+        articles = await client.get("/articles/me/all")
+        return articles
+    except Exception as e:
+        logger.error(f"Error finding all my articles: {str(e)}")
+        raise MCPError(f"Failed to find all my articles: {str(e)}")
 
 def format_article_list(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Format a list of articles."""
@@ -564,12 +620,16 @@ async def get_article(
         # Create a client with the API key from server environment
         client = DevToClient(api_key=get_api_key())
         
-        # Try to get the article
         try:
             article = await client.get(f"/articles/{id}")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                raise MCPError(f"Article not found with ID: {id}", 404)
+                articles = await find_all_my_articles()
+                article = next((article for article in articles if article["id"] == int(id)), None)
+                if article is None:
+                    raise MCPError(f"Article not found with ID: {id}", 404)
+                else:
+                    pass
             else:
                 raise
                 
@@ -577,6 +637,43 @@ async def get_article(
     except Exception as e:
         logger.error(f"Error getting article {id}: {str(e)}")
         raise MCPError(f"Failed to get article {id}: {str(e)}")
+
+@mcp.tool()
+async def get_article_by_title(
+    title: Annotated[str, Field(description="The title of the article")],
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    Get a specific article by title.
+
+    This tool will search for articles on Dev.to, looking through multiple
+    pages until it finds matches or reaches the maximum page limit. If not found
+    it will fallback to the User's articles and filter based on title to retrieve the id
+    """
+    try:
+        # Create a client with the API key from server environment
+        client = DevToClient(api_key=get_api_key())
+        
+        try:
+            articles = await search_articles(title)
+            article = next((article for article in articles if article["title"] == title), None)
+            if article is None:
+                articles = await find_all_my_articles()
+                article = next((article for article in articles if article.get("title", "").lower() == title.lower()), None)
+                if article is None:
+                    raise MCPError(f"Article not found with title: {title}", 404)
+                
+            
+            
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise MCPError(f"Article not found with fallback title: {title}", 404)
+            else:
+                raise
+        return format_article_detail(article)
+    except Exception as e:
+        logger.error(f"Error getting article {title}: {str(e)}")
+        raise MCPError(f"Failed to get article {title}: {str(e)}")
 
 @mcp.tool()
 async def get_user_profile(
@@ -837,6 +934,77 @@ async def list_my_articles(
         raise MCPError(f"Failed to list your articles: {str(e)}")
 
 @mcp.tool()
+async def list_my_draft_articles(
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    List your draft articles on Dev.to.
+    
+    This tool will fetch your draft articles from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
+    """
+    try:
+        # Get API key from server environment
+        api_key = get_api_key()
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
+        
+        # Create a client with the API key
+        client = DevToClient(api_key=api_key)
+        
+        # Fetch articles for the current page
+        articles = await client.get(
+            "/articles/me/unpublished",
+            params={"page": page, "per_page": per_page}
+        )
+        
+        # Return a simplified list of articles with essential details
+        simplified_articles = simplify_articles(articles)
+        return ArticleListResponse.create(simplified_articles)
+    except Exception as e:
+        logger.error(f"Error listing draft articles: {str(e)}")
+        raise MCPError(f"Failed to list your draft articles: {str(e)}") 
+
+@mcp.tool()
+async def list_my_scheduled_articles(
+    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
+    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    List your scheduled articles on Dev.to.
+    
+    This tool will fetch your scheduled articles from Dev.to, looking through multiple
+    pages until it reaches the maximum page limit.
+    """
+    try:
+        # Get API key from server environment
+        api_key = get_api_key()
+        if not api_key:
+            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
+        
+        # Create a client with the API key
+        client = DevToClient(api_key=api_key)
+        
+        # Fetch articles for the current page
+        articles = await client.get(
+            "/articles/me/all",
+            params={"page": page, "per_page": per_page}
+        )
+
+        # Filter articles to retrieve all articles that are 'published' = true with a 'published_at' date in the future
+        articles = [article for article in articles if article["published"] and article["published_at"] > datetime.now().isoformat()]
+        
+        # Return a simplified list of articles with essential details
+        simplified_articles = simplify_articles(articles)
+        return ArticleListResponse.create(simplified_articles)
+    except Exception as e:
+        logger.error(f"Error listing scheduled articles: {str(e)}")
+        raise MCPError(f"Failed to list your scheduled articles: {str(e)}") 
+
+@mcp.tool()
 async def create_article(
     title: Annotated[str, Field(description="The title of the article")],
     content: Annotated[str, Field(description="The markdown content of the article")],
@@ -956,6 +1124,137 @@ async def update_article(
         logger.error(f"Error updating article: {str(e)}")
         raise MCPError(f"Failed to update article {id}: {str(e)}")
 
+# publish article calls the update article tool with published set to true
+@mcp.tool()
+async def publish_article(
+    article_id: Annotated[str, Field(description="The ID of the article to publish")],
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    Publish an article on Dev.to.
+
+    This tool updates the article with the given ID so that it is published.
+    """
+    try:
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=75, total=100)
+            
+        response = await update_article(article_id, published=True)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return {
+            "title": response.get("title"),
+            "id": response.get("id"),
+            "url": response.get("url"),
+            "status": "Published"
+        }
+    except Exception as e:
+        logger.error(f"Error publishing article: {str(e)}")
+        raise MCPError(f"Failed to publish article {article_id}: {str(e)}")
+
+@mcp.tool()
+async def publish_article_by_title(
+    title: Annotated[str, Field(description="The title of the article to publish")],
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    Publish an article on Dev.to. by title
+
+    This tool retrieves the article with the given title and updates it so that it is published.
+    """
+    try:
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=75, total=100)
+            
+        article = await get_article_by_title(title)
+        article_id = article.get("id")
+        response = await publish_article(article_id)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error publishing article by title: {str(e)}")
+        raise MCPError(f"Failed to publish article by title {title}: {str(e)}")
+
+@mcp.tool()
+async def unpublish_article(
+    article_id: Annotated[str, Field(description="The ID of the article to unpublish")],
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    Unpublish an article on Dev.to.
+
+    This tool updates the article with the given ID so that it is unpublished.
+    """
+    try:
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=75, total=100)
+            
+        # Unpublish the article using dedicated endpoint
+        response = await update_article(article_id, published=False)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error unpublishing article: {str(e)}")
+        raise MCPError(f"Failed to unpublish article {article_id}: {str(e)}")
+
+@mcp.tool()
+async def unpublish_article_by_title(
+    title: Annotated[str, Field(description="The title of the article to unpublish")],
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """
+    Unpublish an article on Dev.to. by title
+
+    This tool retrieves the article with the given title and updates it so that it is unpublished.
+    """
+    try:
+        # Report progress at the start
+        if ctx:
+            await ctx.report_progress(progress=25, total=100)
+            
+        # Report progress before submission
+        if ctx:
+            await ctx.report_progress(progress=75, total=100)
+            
+        article = await get_article_by_title(title)
+        article_id = article.get("id")
+        response = await unpublish_article(article_id)
+        
+        # Report progress after completion
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error unpublishing article by title: {str(e)}")
+        raise MCPError(f"Failed to unpublish article by title {title}: {str(e)}")
+
 @mcp.tool()
 async def get_article_by_id(
     article_id: Annotated[str, Field(description="The ID of the article to retrieve (as a string)")],
@@ -974,6 +1273,10 @@ async def get_article_by_id(
             return format_article_detail(article)
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                articles = await find_all_my_articles()
+                for article in articles:
+                    if article.get("id") == article_id:
+                        return format_article_detail(article)
                 raise MCPError(f"Article not found with ID: {article_id}", 404)
             else:
                 raise

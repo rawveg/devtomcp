@@ -12,17 +12,42 @@ An implementation of a Model Context Protocol (MCP) server for the Dev.to API, p
 
 ## ✨ Features
 
-| Feature                        | Description                                      |
-| ------------------------------ | ------------------------------------------------ |
-| 🔍 Browse Latest Articles      | Get the most recent articles from Dev.to          |
-| 🌟 Browse Popular Articles     | Get the most popular articles                    |
-| 🏷️  Browse by Tag             | Get articles with a specific tag                  |
-| 📖 Read Article                | Get detailed information about a specific article |
-| 👤 User Profile                | Get information about a Dev.to user               |
-| 🔎 Search Articles             | Search for articles using keywords                |
-| 📝 Create Article              | Create and publish new articles                   |
-| ✏️  Update Article             | Update your existing articles                     |
-| 📜 List My Articles            | List your own published articles                  |
+| Feature                         | Description                                      |
+| ------------------------------- | ------------------------------------------------ |
+| 🔍 Browse Latest Articles       | Get the most recent articles from Dev.to          |
+| 🌟 Browse Popular Articles      | Get the most popular articles                     |
+| 🏷️ Browse by Tag                | Get articles with a specific tag                  |
+| 📚 Browse by Title              | Get articles with a specific title                |
+| 📖 Read Article                 | Get detailed information about a specific article |
+| 👤 User Profile                 | Get information about a Dev.to user               |
+| 🔎 Search Articles              | Search for articles using keywords                |
+| 👤 Search Articles by User      | Search all articles by a specific user           |
+| 📝 Get Article by ID            | Get detailed information about a specific article |
+| 📝 Get Article by Title         | Get detailed information about a specific article |
+| 🧠 Analyze Article              | Analyze a specific article (prompt-based, summary output)    |
+| 🧠 Analyze User Profile         | Analyze a specific user profile (prompt-based, summary output)|
+| 📝 Create Article               | Create and publish new articles                   |
+| ✏️ Update Article               | Update your existing articles                     |
+| 📜 List My Articles             | List your own published articles                  |
+| 📝 List My Draft Articles       | List your own draft articles                      |
+| 📝 List My Unpublished Articles | List your own unpublished articles                |
+| 📝 List My Scheduled Articles   | List your own scheduled articles                  |
+| 🧑‍💻 Publish Article by ID        | Publish your own articles by ID                  |
+| 📝 Publish Article by Title     | Publish your own articles by title               |
+| 🧑‍💻 Unpublish Article by ID      | Unpublish your own articles by ID                |
+| 📝 Unpublish Article by Title   | Unpublish your own articles by title             |
+| 📝 Delete Article               | Delete your own articles                          |
+
+---
+
+## 🧠 Analyze Tools
+
+| Feature                  | Description                                                  |
+|--------------------------|--------------------------------------------------------------|
+| 🧠 Analyze Article        | Analyze a specific article (prompt-based, summary output)    |
+| 🧠 Analyze User Profile   | Analyze a specific user profile (prompt-based, summary output)|
+
+> **Note:** Analyze tools provide natural language summaries and insights, not raw data dumps.
 
 ---
 
@@ -91,11 +116,19 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 
 ### Searching Content
 - `search_articles(query, page=1)` - Search for articles using keywords
+- `search_articles_by_user(username, page=1)` - Search all articles by a specific user
 
 ### Managing Content (requires authentication)
 - `list_my_articles(page=1, per_page=30)` - List your own published articles
+- `list_my_draft_articles(page=1, per_page=30)` - List your own draft articles
+- `list_my_unpublished_articles(page=1, per_page=30)` - List your own unpublished articles
 - `create_article(title, content, tags="", published=False)` - Create a new article
 - `update_article(id, title=None, content=None, tags=None, published=None)` - Update an existing article
+- `delete_article(id)` - Delete an existing article
+- `publish_article_by_id(id)` - Publish your own articles by ID
+- `publish_article_by_title(title)` - Publish your own articles by title
+- `unpublish_article_by_id(id)` - Unpublish your own articles by ID
+- `unpublish_article_by_title(title)` - Unpublish your own articles by title
 
 ---
 
