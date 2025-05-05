@@ -628,7 +628,7 @@ async def get_article(
                 if article is None:
                     raise MCPError(f"Article not found with ID: {id}", 404)
                 else:
-                    article = article
+                    pass
             else:
                 raise
                 
