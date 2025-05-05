@@ -661,10 +661,9 @@ async def get_article_by_title(
                 article = next((article for article in articles if article.get("title", "").lower() == title.lower()), None)
                 if article is None:
                     raise MCPError(f"Article not found with title: {title}", 404)
-                else:
-                    article = article
-            else:
-                article = article
+                
+            
+            
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise MCPError(f"Article not found with fallback title: {title}", 404)
