@@ -174,92 +174,75 @@ mcp = FastMCP(
     """
 )
 
-# Helper functions for formatting responses
-def format_article_list(articles: List[Dict[str, Any]]) -> str:
-    """Format a list of articles for display."""
-    if not articles:
-        return "No articles found."
-        
-    result = []
-    result.append("# Articles")
-    result.append("")
-    
-    for article in articles:
-        title = article.get("title", "Untitled")
-        id = article.get("id", "Unknown ID")
-        username = article.get("user", {}).get("username", "unknown")
-        date = article.get("published_at", "Unknown date")
-        tags = article.get("tag_list", [])
-        tags_str = ", ".join(tags) if isinstance(tags, list) else tags
-        
-        result.append(f"## {title}")
-        result.append(f"ID: {id}")
-        result.append(f"Author: {username}")
-        result.append(f"Published: {date}")
-        result.append(f"Tags: {tags_str}")
-        result.append(f"URL: {article.get('url', '')}")
-        result.append("")
-        result.append(article.get("description", "No description available."))
-        result.append("")
-    
-    return "\n".join(result)
+# Import prompts from the new modules
+from prompts.article_prompts import (
+    get_article_prompt,
+    list_my_articles_prompt,
+    create_article_prompt,
+    update_article_prompt,
+    delete_article_prompt,
+    get_article_by_id_prompt,
+    search_articles_prompt,
+    analyze_article
+)
+from prompts.user_prompts import (
+    get_user_profile_prompt,
+    analyze_user_profile,
+    analyze_user_profile_by_id
+)
 
-def format_article_detail(article: Dict[str, Any]) -> str:
+# Helper functions for formatting responses
+def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
     """Format a single article with full details."""
     if not article:
-        return "Article not found."
+        return {"error": "Article not found."}
         
-    title = article.get("title", "Untitled")
-    id = article.get("id", "Unknown ID")
-    username = article.get("user", {}).get("username", "unknown")
-    date = article.get("published_at", "Unknown date")
-    tags = article.get("tag_list", [])
-    tags_str = ", ".join(tags) if isinstance(tags, list) else tags
-    body = article.get("body_markdown", "No content available.")
-    
-    result = []
-    result.append(f"# {title}")
-    result.append("")
-    result.append(f"ID: {id}")
-    result.append(f"Author: {username}")
-    result.append(f"Published: {date}")
-    result.append(f"Tags: {tags_str}")
-    result.append(f"URL: {article.get('url', '')}")
-    result.append("")
-    result.append("## Content")
-    result.append("")
-    result.append(body)
-    
-    return "\n".join(result)
+    return {
+        "title": article.get("title", "Untitled"),
+        "id": article.get("id", "Unknown ID"),
+        "author": article.get("user", {}).get("username", "unknown"),
+        "published_at": article.get("published_at", "Unknown date"),
+        "tags": article.get("tag_list", []),
+        "url": article.get("url", ""),
+        "content": article.get("body_markdown", "No content available."),
+        "description": article.get("description", ""),
+        "comments_count": article.get("comments_count", 0),
+        "public_reactions_count": article.get("public_reactions_count", 0),
+        "page_views_count": article.get("page_views_count", 0),
+        "published": article.get("published", False),
+        "organization": article.get("organization", None)
+    }
 
-def format_user_profile(user: Dict[str, Any]) -> str:
+def format_article_list(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Format a list of articles."""
+    if not articles:
+        return []
+        
+    return [{
+        "id": article.get("id", "Unknown ID"),
+        "title": article.get("title", "Untitled"),
+        "url": article.get("url", ""),
+        "published_at": article.get("published_at", "Unknown date"),
+        "description": article.get("description", ""),
+        "tags": article.get("tag_list", []),
+        "author": article.get("user", {}).get("username", "unknown")
+    } for article in articles]
+
+def format_user_profile(user: Dict[str, Any]) -> Dict[str, Any]:
     """Format user profile information."""
     if not user:
-        return "User not found."
+        return {"error": "User not found."}
         
-    name = user.get("name", "Unknown")
-    username = user.get("username", "unknown")
-    bio = user.get("summary", "No bio available.")
-    
-    result = []
-    result.append(f"# {name} (@{username})")
-    result.append("")
-    result.append(bio)
-    result.append("")
-    result.append("## Profile Details")
-    
-    # Add optional fields if present
-    for field, label in [
-        ("location", "Location"),
-        ("joined_at", "Joined"),
-        ("twitter_username", "Twitter"),
-        ("github_username", "GitHub"),
-        ("website_url", "Website")
-    ]:
-        if user.get(field):
-            result.append(f"{label}: {user.get(field)}")
-    
-    return "\n".join(result)
+    return {
+        "name": user.get("name", "Unknown"),
+        "username": user.get("username", "unknown"),
+        "bio": user.get("summary", "No bio available."),
+        "location": user.get("location", ""),
+        "joined_at": user.get("joined_at", ""),
+        "twitter_username": user.get("twitter_username", ""),
+        "github_username": user.get("github_username", ""),
+        "website_url": user.get("website_url", "")
+    }
 
 # Helper function to get API key from server environment
 def get_api_key() -> str:
@@ -498,7 +481,7 @@ async def browse_articles_by_tag(
 async def get_article(
     id: Annotated[str, Field(description="The ID of the article to retrieve")],
     ctx: Context = None
-) -> str:
+) -> Dict[str, Any]:
     """
     Get a specific article by ID.
     """
@@ -524,7 +507,7 @@ async def get_article(
 async def get_user_profile(
     username: Annotated[str, Field(description="The username of the Dev.to user")],
     ctx: Context = None
-) -> str:
+) -> Dict[str, Any]:
     """
     Get profile information for a Dev.to user.
     """
@@ -785,7 +768,7 @@ async def create_article(
     tags: Annotated[str, Field(description="Comma-separated list of tags (e.g., 'python,webdev')")] = "",
     published: Annotated[bool, Field(description="Whether to publish immediately (default: False)")] = False,
     ctx: Context = None
-) -> str:
+) -> Dict[str, Any]:
     """
     Create a new article on Dev.to.
     """
@@ -827,13 +810,12 @@ async def create_article(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
         
-        return (
-            f"Article created successfully!\n"
-            f"Title: {response.get('title')}\n"
-            f"ID: {response.get('id')}\n"
-            f"URL: {response.get('url')}\n"
-            f"Status: {'Published' if response.get('published') else 'Draft'}"
-        )
+        return {
+            "title": response.get("title"),
+            "id": response.get("id"),
+            "url": response.get("url"),
+            "status": "Published" if response.get("published") else "Draft"
+        }
     except Exception as e:
         logger.error(f"Error creating article: {str(e)}")
         raise MCPError(f"Failed to create article: {str(e)}")
@@ -846,7 +828,7 @@ async def update_article(
     tags: Annotated[Optional[str], Field(description="New comma-separated list of tags")] = None,
     published: Annotated[Optional[bool], Field(description="New publish status")] = None,
     ctx: Context = None
-) -> str:
+) -> Dict[str, Any]:
     """
     Update an existing article on Dev.to.
     """
@@ -889,12 +871,12 @@ async def update_article(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
         
-        return (
-            f"Article updated successfully!\n"
-            f"Title: {response.get('title')}\n"
-            f"URL: {response.get('url')}\n"
-            f"Status: {'Published' if response.get('published') else 'Draft'}"
-        )
+        return {
+            "title": response.get("title"),
+            "id": response.get("id"),
+            "url": response.get("url"),
+            "status": "Published" if response.get("published") else "Draft"
+        }
     except Exception as e:
         logger.error(f"Error updating article: {str(e)}")
         raise MCPError(f"Failed to update article {id}: {str(e)}")
@@ -903,7 +885,7 @@ async def update_article(
 async def get_article_by_id(
     article_id: Annotated[str, Field(description="The ID of the article to retrieve (as a string)")],
     ctx: Context = None
-) -> str:
+) -> Dict[str, Any]:
     """
     Get a specific article by ID (string version).
     """
