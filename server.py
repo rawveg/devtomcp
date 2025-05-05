@@ -269,7 +269,6 @@ def format_article_detail(article: Dict[str, Any]) -> str:
     """Format a single article with full details."""
     if not article:
         return "Article not found."
-        return "Article not found."
         
     return {
         "title": article.get("title", "Untitled"),
