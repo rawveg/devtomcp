@@ -302,12 +302,13 @@ def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
         "content": article.get("body_markdown") or article.get("body_html") or "",
     }
 
-async def find_all_my_articles() -> List[Dict[str, Any]]:
+async def find_all_my_articles(api_key: str = None) -> List[Dict[str, Any]]:
     """
     Retrieve all articles (published, drafts, scheduled) belonging to the authenticated user.
     """
     try:
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         client = DevToClient(api_key=api_key)
@@ -671,7 +672,8 @@ async def get_article(
 @mcp.tool()
 async def get_article_by_title(
     title: Annotated[str, Field(description="The title of the article")],
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Get a specific article by title.
@@ -681,20 +683,15 @@ async def get_article_by_title(
     it will fallback to the User's articles and filter based on title to retrieve the id
     """
     try:
-        # Create a client with the API key from server environment
-        client = DevToClient(api_key=get_api_key())
-        
+        client = DevToClient(api_key=get_api_key() if api_key is None else api_key)
         try:
             articles = await search_articles(title)
             article = next((article for article in articles if article["title"] == title), None)
             if article is None:
-                articles = await find_all_my_articles()
+                articles = await find_all_my_articles(api_key=api_key)
                 article = next((article for article in articles if article.get("title", "").lower() == title.lower()), None)
                 if article is None:
                     raise MCPError(f"Article not found with title: {title}", 404)
-                
-            
-            
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise MCPError(f"Article not found with fallback title: {title}", 404)
@@ -1180,7 +1177,7 @@ async def publish_article_by_title(
             await ctx.report_progress(progress=25, total=100)
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-        article = await get_article_by_title(title)
+        article = await get_article_by_title(title, api_key=api_key)
         article_id = article.get("id")
         response = await publish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
@@ -1224,7 +1221,7 @@ async def unpublish_article_by_title(
             await ctx.report_progress(progress=25, total=100)
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-        article = await get_article_by_title(title)
+        article = await get_article_by_title(title, api_key=api_key)
         article_id = article.get("id")
         response = await unpublish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
