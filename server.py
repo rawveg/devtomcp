@@ -381,7 +381,8 @@ def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "published_at": article.get("published_at"),
             "description": article.get("description"),
             "tags": article.get("tag_list", []),
-            "author": article.get("user", {}).get("username") if article.get("user") else None
+            "author": article.get("user", {}).get("username") if article.get("user") else None,
+            "published": bool(article.get("published", False))  # Normalize null/missing to False
         }
         for article in articles
     ]
