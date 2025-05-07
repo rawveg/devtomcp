@@ -308,11 +308,10 @@ async def find_all_my_articles(api_key: str = None) -> List[Dict[str, Any]]:
     """
     Retrieve all articles (published, drafts, scheduled) belonging to the authenticated user.
     """
+    if not api_key:
+        logger.error("Missing API key for find_all_my_articles")
+        raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
     try:
-        if api_key is None:
-            api_key = get_api_key()
-        if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         client = DevToClient(api_key=api_key)
         articles = await client.get("/articles/me/all")
         return articles
@@ -679,13 +678,12 @@ async def get_article_by_title(
 ) -> Dict[str, Any]:
     """
     Get a specific article by title.
-
-    This tool will search for articles on Dev.to, looking through multiple
-    pages until it finds matches or reaches the maximum page limit. If not found
-    it will fallback to the User's articles and filter based on title to retrieve the id
     """
+    if not api_key:
+        logger.error(f"Missing API key for get_article_by_title: title={title}")
+        raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
     try:
-        client = DevToClient(api_key=get_api_key() if api_key is None else api_key)
+        client = DevToClient(api_key=api_key)
         try:
             articles = await search_articles(title)
             article = next((article for article in articles if article["title"] == title), None)
@@ -1310,6 +1308,14 @@ async def update_article_by_title(
     """
     Update an existing article on Dev.to by title (resolves title to ID).
     """
+    if not api_key:
+        logger.error(f"Missing API key for update_article_by_title: title={title}")
+        return {
+            "success": False,
+            "status": "error",
+            "error": "API key is required for this operation. Please provide a Dev.to API key in your server environment.",
+            "message": "Failed to update the article: API key is required for this operation. Please provide a Dev.to API key in your server environment."
+        }
     try:
         article = await get_article_by_title(title, api_key=api_key)
         article_id = article.get("id")
