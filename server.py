@@ -1295,6 +1295,39 @@ async def get_article_by_id(
         logger.error(f"Error getting article {article_id}: {str(e)}")
         raise MCPError(f"Failed to get article {article_id}: {str(e)}")
 
+@mcp.tool()
+async def update_article_by_title(
+    title: Annotated[str, Field(description="The title of the article to update")],
+    new_title: Annotated[Optional[str], Field(description="New title for the article")] = None,
+    content: Annotated[Optional[str], Field(description="New markdown content")] = None,
+    tags: Annotated[Optional[str], Field(description="New comma-separated list of tags")] = None,
+    published: Annotated[Optional[bool], Field(description="New publish status")] = None,
+    ctx: Context = None,
+    api_key: str = None
+) -> Dict[str, Any]:
+    """
+    Update an existing article on Dev.to by title (resolves title to ID).
+    """
+    try:
+        article = await get_article_by_title(title, api_key=api_key)
+        article_id = article.get("id")
+        return await update_article(
+            id=article_id,
+            title=new_title,
+            content=content,
+            tags=tags,
+            published=published,
+            ctx=ctx,
+            api_key=api_key
+        )
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e),
+            "message": f"Failed to update the article: {str(e)}"
+        }
+
 # --- REST API Endpoints for MCP Tools ---
 from pydantic import BaseModel
 
@@ -1450,14 +1483,136 @@ async def rest_create_article(request: Request, body: CreateArticleRequest = Bod
     )
 
 # Update article
-@app.post("/update_article", tags=["Articles"], summary="Update My Article", description="Update my existing article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The updated article.")
+@app.post(
+    "/update_article",
+    tags=["Articles"],
+    summary="Update My Article by ID",
+    description="Update your existing article on Dev.to by numeric ID. Requires authentication. If you only know the title, use /update_article_by_title instead.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The updated article.",
+    responses={
+        200: {
+            "description": "Article updated successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful update",
+                            "value": {
+                                "success": True,
+                                "status": "success",
+                                "id": 2466526,
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been updated successfully."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error updating article",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to update",
+                            "value": {
+                                "success": False,
+                                "status": "error",
+                                "error": "Article not found or already updated",
+                                "message": "Failed to update the article: Article not found or already updated."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def rest_update_article(request: Request, body: UpdateArticleRequest = Body(..., example={"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
     api_key = get_api_key(request)
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    # Validate that id is numeric
+    try:
+        int(body.id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="The 'id' field must be a numeric article ID. If you only know the title, use /update_article_by_title instead.")
     return await update_article(
         id=body.id,
         title=body.title,
+        content=body.content,
+        tags=body.tags,
+        published=body.published,
+        ctx=None,
+        api_key=api_key
+    )
+
+# Update article by title
+class UpdateArticleByTitleRequest(BaseModel):
+    title: str = Field(..., example="Test Article", description="The title of the article to update.")
+    new_title: Optional[str] = Field(None, example="Updated Title", description="New title for the article.")
+    content: Optional[str] = Field(None, example="# Updated Content", description="New markdown content.")
+    tags: Optional[str] = Field(None, example="python,ai", description="New comma-separated list of tags.")
+    published: Optional[bool] = Field(None, example=True, description="New publish status.")
+
+@app.post(
+    "/update_article_by_title",
+    tags=["Articles"],
+    summary="Update My Article by Title",
+    description="Update your existing article on Dev.to by title (resolves title to ID). Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The updated article.",
+    responses={
+        200: {
+            "description": "Article updated successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful update by title",
+                            "value": {
+                                "success": True,
+                                "status": "success",
+                                "id": 2466526,
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been updated successfully."
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error updating article by title",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to update by title",
+                            "value": {
+                                "success": False,
+                                "status": "error",
+                                "error": "Article not found or already updated",
+                                "message": "Failed to update the article: Article not found or already updated."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+async def rest_update_article_by_title(request: Request, body: UpdateArticleByTitleRequest = Body(..., example={"title": "Test Article", "new_title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await update_article_by_title(
+        title=body.title,
+        new_title=body.new_title,
         content=body.content,
         tags=body.tags,
         published=body.published,
