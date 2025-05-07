@@ -858,9 +858,9 @@ async def list_my_articles(
     api_key: str = None
 ) -> List[Dict[str, Any]]:
     """
-    List your published articles across multiple pages.
+    List my published articles across multiple pages.
     
-    This tool will fetch your articles from Dev.to, looking through multiple
+    This tool will fetch my articles from Dev.to, looking through multiple
     pages until it reaches the maximum page limit.
     """
     try:
@@ -906,7 +906,7 @@ async def list_my_articles(
                 current_page += 1
                 
             except Exception as e:
-                logger.warning(f"Error fetching your articles on page {current_page}: {str(e)}")
+                logger.warning(f"Error fetching my articles on page {current_page}: {str(e)}")
                 # Continue to the next page even if there's an error
                 current_page += 1
         
@@ -919,7 +919,7 @@ async def list_my_articles(
         return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error listing user articles: {str(e)}")
-        raise MCPError(f"Failed to list your articles: {str(e)}")
+        raise MCPError(f"Failed to list my articles: {str(e)}")
 
 @mcp.tool()
 async def list_my_draft_articles(
@@ -930,7 +930,7 @@ async def list_my_draft_articles(
     api_key: str = None
 ) -> List[Dict[str, Any]]:
     """
-    List your draft articles on Dev.to, paginated.
+    List my draft articles on Dev.to, paginated.
     """
     try:
         if api_key is None:
@@ -952,13 +952,13 @@ async def list_my_draft_articles(
                 all_articles.extend(articles)
                 current_page += 1
             except Exception as e:
-                logger.warning(f"Error fetching your draft articles on page {current_page}: {str(e)}")
+                logger.warning(f"Error fetching my draft articles on page {current_page}: {str(e)}")
                 current_page += 1
         simplified_articles = simplify_articles(all_articles)
         return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error listing draft articles: {str(e)}")
-        raise MCPError(f"Failed to list your draft articles: {str(e)}")
+        raise MCPError(f"Failed to list my draft articles: {str(e)}")
 
 @mcp.tool()
 async def list_my_scheduled_articles(
@@ -968,9 +968,9 @@ async def list_my_scheduled_articles(
     api_key: str = None
 ) -> Dict[str, Any]:
     """
-    List your scheduled articles on Dev.to.
+    List my scheduled articles on Dev.to.
     
-    This tool will fetch your scheduled articles from Dev.to, looking through multiple
+    This tool will fetch my scheduled articles from Dev.to, looking through multiple
     pages until it reaches the maximum page limit.
     """
     try:
@@ -996,7 +996,7 @@ async def list_my_scheduled_articles(
         return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error listing scheduled articles: {str(e)}")
-        raise MCPError(f"Failed to list your scheduled articles: {str(e)}") 
+        raise MCPError(f"Failed to list my scheduled articles: {str(e)}") 
 
 @mcp.tool()
 async def create_article(
@@ -1383,7 +1383,7 @@ async def rest_search_articles_by_user(
     return await search_articles_by_user(username=username, page=page, per_page=per_page, max_pages=max_pages)
 
 # List my articles
-@app.get("/list_my_articles", tags=["Articles"], summary="List My Published Articles", description="List your published articles across multiple pages. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
+@app.get("/list_my_articles", tags=["Articles"], summary="List My Published Articles", description="List my published articles across multiple pages. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_articles(
     page: int = Query(1, description="Starting page number for pagination", example=1),
     per_page: int = Query(30, description="Number of articles per page", example=30),
@@ -1396,7 +1396,7 @@ async def rest_list_my_articles(
     return await list_my_articles(page=page, per_page=per_page, max_pages=max_pages, ctx=None, api_key=api_key)
 
 # List my draft articles
-@app.get("/list_my_draft_articles", tags=["Articles"], summary="List My Draft Articles", description="List your draft articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
+@app.get("/list_my_draft_articles", tags=["Articles"], summary="List My Draft Articles", description="List my draft articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_draft_articles(
     page: int = Query(1, description="Starting page number for pagination", example=1),
     per_page: int = Query(30, description="Number of articles per page", example=30),
@@ -1412,7 +1412,7 @@ async def rest_list_my_draft_articles(
     "/list_my_scheduled_articles",
     tags=["Articles"],
     summary="List My Scheduled Articles",
-    description="List your scheduled articles on Dev.to. Requires authentication. An article is considered scheduled if 'published' is true and 'published_at' is a future date.",
+    description="List my scheduled articles on Dev.to. Requires authentication. An article is considered scheduled if 'published' is true and 'published_at' is a future date.",
     response_model=List[ScheduledArticleResponse],
     status_code=status.HTTP_200_OK
 )
@@ -1436,7 +1436,7 @@ async def rest_list_my_scheduled_articles(
     return articles
 
 # Create article
-@app.post("/create_article", tags=["Articles"], summary="Create Article", description="Create a new article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_201_CREATED, response_description="The created article.")
+@app.post("/create_article", tags=["Articles"], summary="Create My Article", description="Create my new article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_201_CREATED, response_description="The created article.")
 async def rest_create_article(request: Request, body: CreateArticleRequest = Body(..., example={"title": "My First Article", "content": "# Hello World\nThis is my article.", "tags": "python,webdev", "published": False})):
     api_key = get_api_key(request)
     if not api_key:
@@ -1451,7 +1451,7 @@ async def rest_create_article(request: Request, body: CreateArticleRequest = Bod
     )
 
 # Update article
-@app.post("/update_article", tags=["Articles"], summary="Update Article", description="Update an existing article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The updated article.")
+@app.post("/update_article", tags=["Articles"], summary="Update My Article", description="Update my existing article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The updated article.")
 async def rest_update_article(request: Request, body: UpdateArticleRequest = Body(..., example={"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
     api_key = get_api_key(request)
     if not api_key:
