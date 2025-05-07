@@ -1159,7 +1159,11 @@ async def publish_article(
         response = await update_article(article_id, published=True, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        return response
+        return {
+            "status": "success",
+            "action": "published",
+            "article": response
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -1182,7 +1186,14 @@ async def publish_article_by_title(
         response = await publish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        return response
+        # If response is already wrapped, just return it
+        if isinstance(response, dict) and "status" in response and "action" in response and "article" in response:
+            return response
+        return {
+            "status": "success",
+            "action": "published",
+            "article": response
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -1203,7 +1214,11 @@ async def unpublish_article(
         response = await update_article(article_id, published=False, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        return response
+        return {
+            "status": "success",
+            "action": "unpublished",
+            "article": response
+        }
     except Exception as e:
         return {"error": str(e)}
 
@@ -1226,7 +1241,14 @@ async def unpublish_article_by_title(
         response = await unpublish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        return response
+        # If response is already wrapped, just return it
+        if isinstance(response, dict) and "status" in response and "action" in response and "article" in response:
+            return response
+        return {
+            "status": "success",
+            "action": "unpublished",
+            "article": response
+        }
     except Exception as e:
         return {"error": str(e)}
 
