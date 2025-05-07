@@ -1040,6 +1040,19 @@ async def list_my_scheduled_articles(
         logger.error(f"Error listing scheduled articles: {str(e)}")
         raise MCPError(f"Failed to list my scheduled articles: {str(e)}") 
 
+def safe_json_payload(data: dict) -> dict:
+    # Recursively ensure all strings are valid for JSON
+    def clean(val):
+        if isinstance(val, str):
+            # Remove problematic control characters except newline, carriage return, tab
+            return ''.join(c for c in val if c >= ' ' or c in '\n\r\t')
+        if isinstance(val, dict):
+            return {k: clean(v) for k, v in val.items()}
+        if isinstance(val, list):
+            return [clean(v) for v in val]
+        return val
+    return clean(data)
+
 @mcp.tool()
 async def create_article(
     title: Annotated[str, Field(description="The title of the article")],
@@ -1067,6 +1080,7 @@ async def create_article(
                 "tags": tag_list
             }
         }
+        article_data = safe_json_payload(article_data)
         if ctx:
             await ctx.report_progress(progress=25, total=100)
         if ctx:
@@ -1110,6 +1124,7 @@ async def update_article(
             article_data["article"]["tags"] = tag_list
         if published is not None:
             article_data["article"]["published"] = bool(published)
+        article_data = safe_json_payload(article_data)
         if ctx:
             await ctx.report_progress(progress=25, total=100)
         if ctx:
