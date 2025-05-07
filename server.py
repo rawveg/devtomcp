@@ -920,10 +920,9 @@ async def list_my_draft_articles(
     per_page: int = 30,
     ctx: Context = None,
     api_key: str = None
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     """
     List your draft articles on Dev.to.
-    
     This tool will fetch your draft articles from Dev.to, looking through multiple
     pages until it reaches the maximum page limit.
     """
@@ -932,22 +931,16 @@ async def list_my_draft_articles(
             api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
-        
-        # Create a client with the API key
         client = DevToClient(api_key=api_key)
-        
-        # Fetch articles for the current page
         articles = await client.get(
             "/articles/me/unpublished",
             params={"page": page, "per_page": per_page}
         )
-        
-        # Return a simplified list of articles with essential details
         simplified_articles = simplify_articles(articles)
-        return ArticleListResponse.create(simplified_articles)
+        return simplified_articles
     except Exception as e:
         logger.error(f"Error listing draft articles: {str(e)}")
-        raise MCPError(f"Failed to list your draft articles: {str(e)}") 
+        raise MCPError(f"Failed to list your draft articles: {str(e)}")
 
 @mcp.tool()
 async def list_my_scheduled_articles(
@@ -1289,6 +1282,16 @@ class ArticleResponse(BaseModel):
     tags: List[str]
     author: str
 
+class ScheduledArticleResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: str
+    description: str
+    tags: List[str]
+    author: str
+    scheduled: bool = Field(..., description="True if the article is scheduled for future publication.")
+
 # Browse latest articles
 @app.get("/browse_latest_articles")
 async def rest_browse_latest_articles(
@@ -1385,7 +1388,14 @@ async def rest_list_my_draft_articles(
     return await list_my_draft_articles(page=page, per_page=per_page, ctx=None, api_key=api_key)
 
 # List my scheduled articles
-@app.get("/list_my_scheduled_articles", tags=["Articles"], summary="List My Scheduled Articles", description="List your scheduled articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
+@app.get(
+    "/list_my_scheduled_articles",
+    tags=["Articles"],
+    summary="List My Scheduled Articles",
+    description="List your scheduled articles on Dev.to. Requires authentication. An article is considered scheduled if 'published' is true and 'published_at' is a future date.",
+    response_model=List[ScheduledArticleResponse],
+    status_code=status.HTTP_200_OK
+)
 async def rest_list_my_scheduled_articles(
     page: int = Query(1, description="Starting page number for pagination", example=1),
     per_page: int = Query(30, description="Number of articles per page", example=30),
@@ -1394,7 +1404,16 @@ async def rest_list_my_scheduled_articles(
     api_key = get_api_key(request)
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
-    return await list_my_scheduled_articles(page=page, per_page=per_page, ctx=None, api_key=api_key)
+    simplified_articles = await list_my_scheduled_articles(page=page, per_page=per_page, ctx=None, api_key=api_key)
+    now = datetime.now().isoformat()
+    articles = [
+        {
+            **article,
+            "scheduled": article.get("published", False) and article.get("published_at", "") > now
+        }
+        for article in simplified_articles
+    ]
+    return articles
 
 # Create article
 @app.post("/create_article", tags=["Articles"], summary="Create Article", description="Create a new article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_201_CREATED, response_description="The created article.")

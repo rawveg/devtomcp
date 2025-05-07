@@ -107,7 +107,7 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 
 ### Analysing Content
 - `analyse_article` - Analyse a specific article
-- `analyse_user_profile` - Analyse a specific user profile
+- `analyse_user_profile` - Analyse a specific user
 
 ### Browsing Content
 - `browse_latest_articles()` - Get the most recent articles from Dev.to
@@ -252,7 +252,7 @@ For deploying to Google Cloud Run:
    ```bash
    gcloud secrets create devto-api-key --data-file=- <<< "your_api_key_here"
    ```
-3. Deploy with the secret mounted:
+3. Deploy with the secret mounted in SSE mode:
    ```bash
    gcloud run deploy devtomcp \
       --source . \
@@ -261,6 +261,7 @@ For deploying to Google Cloud Run:
       --region [REGION] \
       --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
       --set-env-vars="DEVTO_API_KEY=<<DEVTO_API_KEY>>" \
+      --set-env-vars="SERVER_MODE=sse" \
       --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
       --format="json"
    ```
@@ -272,19 +273,45 @@ For deploying to Google Cloud Run:
    | `LOG_LEVEL` | Logging level (INFO, DEBUG, etc.) | `INFO` |
    | `DEVTO_API_KEY` | Dev.to API key | `None` |
    | `DEVTO_API_BASE_URL` | Dev.to API base URL | `https://dev.to/api` |
+   | `SERVER_MODE` | The server mode to deploy in | `sse` |
+
+   These variables must be set on the command line for gcloud run deploy as the .env file is not mounted to the container.
+
+   Alternative deploy in REST mode with OpenAPI Tools:
+   ```bash
+   gcloud run deploy devtomcp \
+      --source . \
+      --platform managed \
+      --allow-unauthenticated \
+      --region [REGION] \
+      --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
+      --set-env-vars="SERVER_MODE=rest" \
+      --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
+      --format="json"
+   ```
+
+   **Environment Variables**
+   
+   | Variable | Description | Default |
+   | --- | --- | --- |
+   | `LOG_LEVEL` | Logging level (INFO, DEBUG, etc.) | `INFO` |
+   | `SERVER_MODE` | Server mode to deploy in | `rest` |
+   | `DEVTO_API_BASE_URL` | Dev.to API base URL | `https://dev.to/api` |
 
    These variables must be set on the command line for gcloud run deploy as the .env file is not mounted to the container.
 
   **Region Selection**
   The region should be selected according to the region of your associated project. A list of available regions can be found [here](https://cloud.google.com/run/docs/locations).
 
-⚠️ **Security Warning:** 
+⚠️ **Security Warning - SSE Mode:** 
 - The `--allow-unauthenticated` flag makes your server publicly accessible
 - Since this is a single-user server with your API key, you MUST implement additional security measures:
   - Use [Cloud Run Authentication](https://cloud.google.com/run/docs/authenticating/overview)
   - Set up [Identity-Aware Proxy (IAP)](https://cloud.google.com/iap/docs/cloud-run-tutorial)
   - Configure [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/overview)
   - Use [Ingress Controls](https://cloud.google.com/run/docs/securing/ingress)
+
+- When deploying in REST mode (recommended for Cloud Run) the above security considerations don't apply, as each request to the server in this mode needs to be accomanied by an Authorization Bearer Token `Authorization: Bearer <<your_dev_to_api_key_here>>` immediately limiting destructive access.
 
 See [GCP_DEPLOYMENT.md](./GCP_DEPLOYMENT.md) for detailed security configuration instructions.
 
