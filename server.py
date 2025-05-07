@@ -214,6 +214,7 @@ from prompts.article_prompts import (
     list_my_scheduled_articles_prompt,
     create_article_prompt,
     update_article_prompt,
+    update_article_by_title_prompt,
     delete_article_prompt,
     get_article_by_id_prompt,
     search_articles_prompt,
@@ -238,6 +239,7 @@ list_my_unpublished_articles_prompt = mcp.prompt()(list_my_unpublished_articles_
 list_my_scheduled_articles_prompt = mcp.prompt()(list_my_scheduled_articles_prompt)
 create_article_prompt = mcp.prompt()(create_article_prompt)
 update_article_prompt = mcp.prompt()(update_article_prompt)
+update_article_by_title_prompt = mcp.prompt()(update_article_by_title_prompt)
 delete_article_prompt = mcp.prompt()(delete_article_prompt)
 get_article_by_id_prompt = mcp.prompt()(get_article_by_id_prompt)
 search_articles_prompt = mcp.prompt()(search_articles_prompt)

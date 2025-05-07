@@ -112,4 +112,21 @@ def unpublish_article_prompt(article_id: str) -> str:
 def unpublish_article_by_title_prompt(title: str) -> str:
     """Create a prompt to unpublish an article by title"""
     return f"Please unpublish the article with title '{title}' on Dev.to."
+
+def update_article_by_title_prompt(title: str, new_title: Optional[str] = None, content: Optional[str] = None, tags: Optional[str] = None, published: Optional[bool] = None) -> str:
+    """Create a prompt to update an article by title"""
+    prompt = f"Please update the article with title '{title}' on Dev.to"
+    changes = []
+    if new_title is not None:
+        changes.append(f"new title: '{new_title}'")
+    if content is not None:
+        changes.append(f"new content: {content}")
+    if tags is not None:
+        changes.append(f"new tags: {tags}")
+    if published is not None:
+        changes.append("publish it" if published else "save as draft")
+    if changes:
+        prompt += " with the following changes: " + ", ".join(changes)
+    prompt += "."
+    return prompt
     

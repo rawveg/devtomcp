@@ -28,6 +28,7 @@ An implementation of a Model Context Protocol (MCP) server for the Dev.to API, p
 | 🧠 Analyze User Profile         | Analyze a specific user profile (prompt-based, summary output)|
 | 📝 Create Article               | Create and publish new articles                   |
 | ✏️ Update Article               | Update your existing articles                     |
+| 📝 Update Article by Title      | Update your existing articles by title (resolves to ID)         |
 | 📜 List My Articles             | List your own published articles                  |
 | 📝 List My Draft Articles       | List your own draft articles                      |
 | 📝 List My Unpublished Articles | List your own unpublished articles                |
@@ -133,6 +134,7 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 - `publish_article_by_title(title)` - Publish your own articles by title
 - `unpublish_article_by_id(id)` - Unpublish your own articles by ID
 - `unpublish_article_by_title(title)` - Unpublish your own articles by title
+- `update_article_by_title(title, new_title=None, content=None, tags=None, published=None)` - Update an existing article by title (resolves to ID)
 
 ---
 
@@ -175,6 +177,7 @@ curl -X GET "http://localhost:8000/list_my_articles?page=1&per_page=30&max_pages
 ### 🛠️ REST Endpoints
 - All major tools are available as REST endpoints (see `/docs` for details)
 - Each endpoint includes rich OpenAPI metadata, examples, and tags for easy discovery
+- `update_article_by_title` - Update your own articles by title (resolves to ID)
 
 ### 🤖 Why This Matters
 - Use as a traditional REST API, an OpenAPI toolserver, or an LLM/agent tool provider—all from one codebase!
