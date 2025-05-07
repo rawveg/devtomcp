@@ -394,6 +394,41 @@ def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         for article in articles
     ]
 
+# Pydantic models
+class ArticleResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: Optional[str]
+    description: str
+    tags: List[str]
+    author: str
+    published: bool
+
+class ScheduledArticleResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: Optional[str]
+    description: str
+    tags: List[str]
+    author: str
+    scheduled: bool = Field(..., description="True if the article is scheduled for future publication.")
+    published: bool
+
+class ArticleDetailResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: Optional[str]
+    description: Optional[str]
+    tags: List[str]
+    author: str
+    published: bool
+    body_markdown: Optional[str]
+    body_html: Optional[str]
+    content: Optional[str]
+
 # MCP Tool implementations
 
 @mcp.tool()
@@ -1297,27 +1332,6 @@ class UpdateArticleRequest(BaseModel):
     content: Optional[str] = Field(None, example="# Updated Content", description="New markdown content.")
     tags: Optional[str] = Field(None, example="python,ai", description="New comma-separated list of tags.")
     published: Optional[bool] = Field(None, example=True, description="New publish status.")
-
-class ArticleResponse(BaseModel):
-    id: int
-    title: str
-    url: str
-    published_at: Optional[str]
-    description: str
-    tags: List[str]
-    author: str
-    published: bool
-
-class ScheduledArticleResponse(BaseModel):
-    id: int
-    title: str
-    url: str
-    published_at: Optional[str]
-    description: str
-    tags: List[str]
-    author: str
-    scheduled: bool = Field(..., description="True if the article is scheduled for future publication.")
-    published: bool
 
 # Browse latest articles
 @app.get("/browse_latest_articles")
