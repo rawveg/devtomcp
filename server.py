@@ -611,26 +611,32 @@ async def get_article(
     Get a specific article by ID.
     """
     try:
-        # Create a client with the API key from server environment
         client = DevToClient(api_key=get_api_key())
-        
+        # 1. Try public endpoint first
         try:
             article = await client.get(f"/articles/{id}")
+            return format_article_detail(article)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                articles = await find_all_my_articles()
-                article = next((article for article in articles if article["id"] == int(id)), None)
-                if article is None:
-                    raise MCPError(f"Article not found with ID: {id}", 404)
-                else:
-                    pass
-            else:
-                raise
-                
-        return format_article_detail(article)
+            if e.response.status_code != 404:
+                return {"error": f"HTTP error: {e.response.status_code} - {e.response.text}"}
+        # 2. Fallback: search /articles/me/all for unpublished articles only
+        page = 1
+        per_page = 30
+        max_pages = 10
+        while page <= max_pages:
+            articles = await client.get("/articles/me/all", params={"page": page, "per_page": per_page})
+            for article in articles:
+                if article.get("published"):
+                    # Stop searching—published articles are accessible via public endpoint
+                    return {"error": f"Article not found with ID: {id}"}
+                if str(article.get("id")) == str(id):
+                    return format_article_detail(article)
+            if not articles or len(articles) == 0:
+                break
+            page += 1
+        return {"error": f"Article not found with ID: {id}"}
     except Exception as e:
-        logger.error(f"Error getting article {id}: {str(e)}")
-        raise MCPError(f"Failed to get article {id}: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def get_article_by_title(
