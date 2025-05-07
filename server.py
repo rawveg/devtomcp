@@ -279,25 +279,32 @@ def format_article_list(articles: List[Dict[str, Any]]) -> str:
     
     return "\n".join(result)
 
-def format_article_detail(article: Dict[str, Any]) -> str:
-    """Format a single article with full details."""
-    if not article:
-        return "Article not found."
-        
+class ArticleDetailResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: Optional[str]
+    description: Optional[str]
+    tags: List[str]
+    author: str
+    published: bool
+    body_markdown: Optional[str]
+    body_html: Optional[str]
+    content: Optional[str]
+
+def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
     return {
+        "id": article.get("id"),
         "title": article.get("title", "Untitled"),
-        "id": article.get("id", "Unknown ID"),
-        "author": article.get("user", {}).get("username", "unknown"),
-        "published_at": article.get("published_at", "Unknown date"),
-        "tags": article.get("tag_list", []),
         "url": article.get("url", ""),
-        "content": article.get("body_markdown", "No content available."),
-        "description": article.get("description", ""),
-        "comments_count": article.get("comments_count", 0),
-        "public_reactions_count": article.get("public_reactions_count", 0),
-        "page_views_count": article.get("page_views_count", 0),
-        "published": article.get("published", False),
-        "organization": article.get("organization", None)
+        "published_at": article.get("published_at"),
+        "description": article.get("description"),
+        "tags": article.get("tag_list", []),
+        "author": article.get("user", {}).get("username", "unknown"),
+        "published": bool(article.get("published", False)),
+        "body_markdown": article.get("body_markdown"),
+        "body_html": article.get("body_html"),
+        "content": article.get("body_markdown") or article.get("body_html") or "",
     }
 
 async def find_all_my_articles() -> List[Dict[str, Any]]:
@@ -1344,13 +1351,13 @@ async def rest_browse_articles_by_tag(
     return await browse_articles_by_tag(tag=tag, page=page, per_page=per_page, max_pages=max_pages)
 
 # Get article by ID
-@app.get("/get_article/{id}")
+@app.get("/get_article/{id}", response_model=ArticleDetailResponse)
 async def rest_get_article(id: str = Path(...)):
     """REST endpoint: Get a specific article by ID."""
     return await get_article(id=id)
 
 # Get article by title
-@app.get("/get_article_by_title/{title}")
+@app.get("/get_article_by_title/{title}", response_model=ArticleDetailResponse)
 async def rest_get_article_by_title(title: str = Path(...)):
     """REST endpoint: Get a specific article by title."""
     return await get_article_by_title(title=title)
@@ -1499,7 +1506,7 @@ async def rest_unpublish_article_by_title(title: str = Path(..., description="Th
     return await unpublish_article_by_title(title=title, ctx=None, api_key=api_key)
 
 # Get article by ID (string version)
-@app.get("/get_article_by_id/{article_id}")
+@app.get("/get_article_by_id/{article_id}", response_model=ArticleDetailResponse)
 async def rest_get_article_by_id(article_id: str = Path(...)):
     """REST endpoint: Get a specific article by ID (string version)."""
     return await get_article_by_id(article_id=article_id)
