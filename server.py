@@ -29,6 +29,7 @@ from typing import List, Dict, Any, Optional, Union, Annotated, Iterator
 from dotenv import load_dotenv
 from datetime import datetime
 import threading
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1053,6 +1054,10 @@ def safe_json_payload(data: dict) -> dict:
         return val
     return clean(data)
 
+def sanitize_tag(tag: str) -> str:
+    # Only allow lowercase alphanumeric and underscores
+    return re.sub(r'[^a-z0-9_]', '', tag.lower())
+
 @mcp.tool()
 async def create_article(
     title: Annotated[str, Field(description="The title of the article")],
@@ -1071,7 +1076,7 @@ async def create_article(
         if not api_key:
             return {"error": "API key is required for this operation. Please provide a Dev.to API key in your server environment.", "status_code": 401}
         client = DevToClient(api_key=api_key)
-        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()] if tags else []
+        tag_list = [sanitize_tag(tag.strip()) for tag in tags.split(",") if sanitize_tag(tag.strip())] if tags else []
         article_data = {
             "article": {
                 "title": title,
@@ -1120,7 +1125,7 @@ async def update_article(
         if content is not None:
             article_data["article"]["body_markdown"] = content
         if tags is not None:
-            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            tag_list = [sanitize_tag(tag.strip()) for tag in tags.split(",") if sanitize_tag(tag.strip())]
             if tag_list:
                 article_data["article"]["tags"] = tag_list
         if published is not None:
