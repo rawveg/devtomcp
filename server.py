@@ -1482,12 +1482,11 @@ async def rest_create_article(request: Request, body: CreateArticleRequest = Bod
         api_key=api_key
     )
 
-# Update article
-@app.post(
+@app.patch(
     "/update_article",
     tags=["Articles"],
-    summary="Update My Article by ID",
-    description="Update your existing article on Dev.to by numeric ID. Requires authentication. If you only know the title, use /update_article_by_title instead.",
+    summary="Update My Article by Numeric ID",
+    description="Update your existing article on Dev.to by numeric article ID. The 'id' field must be an integer. If you only know the title, use /update_article_by_title instead. Requires authentication.",
     response_model=dict,
     status_code=status.HTTP_200_OK,
     response_description="The updated article.",
@@ -1512,17 +1511,17 @@ async def rest_create_article(request: Request, body: CreateArticleRequest = Bod
             }
         },
         400: {
-            "description": "Error updating article",
+            "description": "Error updating article (e.g. non-numeric ID)",
             "content": {
                 "application/json": {
                     "examples": {
                         "failure": {
-                            "summary": "Failure to update",
+                            "summary": "Failure to update (non-numeric ID)",
                             "value": {
                                 "success": False,
                                 "status": "error",
-                                "error": "Article not found or already updated",
-                                "message": "Failed to update the article: Article not found or already updated."
+                                "error": "The 'id' field must be a numeric article ID. If you only know the title, use /update_article_by_title instead.",
+                                "message": "Failed to update the article: The 'id' field must be a numeric article ID. If you only know the title, use /update_article_by_title instead."
                             }
                         }
                     }
@@ -1550,19 +1549,11 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
         api_key=api_key
     )
 
-# Update article by title
-class UpdateArticleByTitleRequest(BaseModel):
-    title: str = Field(..., example="Test Article", description="The title of the article to update.")
-    new_title: Optional[str] = Field(None, example="Updated Title", description="New title for the article.")
-    content: Optional[str] = Field(None, example="# Updated Content", description="New markdown content.")
-    tags: Optional[str] = Field(None, example="python,ai", description="New comma-separated list of tags.")
-    published: Optional[bool] = Field(None, example=True, description="New publish status.")
-
-@app.post(
+@app.patch(
     "/update_article_by_title",
     tags=["Articles"],
-    summary="Update My Article by Title",
-    description="Update your existing article on Dev.to by title (resolves title to ID). Requires authentication.",
+    summary="Update My Article by Title (Resolves to ID)",
+    description="Update your existing article on Dev.to by title. This endpoint will resolve the title to the correct article ID automatically. Requires authentication.",
     response_model=dict,
     status_code=status.HTTP_200_OK,
     response_description="The updated article.",
