@@ -373,6 +373,12 @@ class ArticleListResponse:
 # Function to convert raw articles to a simplified list with essential details
 def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Convert raw article data to a simplified list with essential details."""
+    def get_published(article):
+        # If 'published' is missing, treat as False (unpublished)
+        if "published" not in article:
+            return False
+        # If present but None, treat as False
+        return bool(article.get("published", False))
     return [
         {
             "id": article.get("id"),
@@ -382,7 +388,7 @@ def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "description": article.get("description"),
             "tags": article.get("tag_list", []),
             "author": article.get("user", {}).get("username") if article.get("user") else None,
-            "published": bool(article.get("published", False))  # Normalize null/missing to False
+            "published": get_published(article)
         }
         for article in articles
     ]
