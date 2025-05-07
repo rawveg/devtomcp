@@ -1288,7 +1288,7 @@ class ArticleResponse(BaseModel):
     id: int
     title: str
     url: str
-    published_at: str
+    published_at: Optional[str]
     description: str
     tags: List[str]
     author: str
@@ -1297,7 +1297,7 @@ class ScheduledArticleResponse(BaseModel):
     id: int
     title: str
     url: str
-    published_at: str
+    published_at: Optional[str]
     description: str
     tags: List[str]
     author: str
