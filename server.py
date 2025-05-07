@@ -279,18 +279,12 @@ def format_article_list(articles: List[Dict[str, Any]]) -> str:
     
     return "\n".join(result)
 
-class ArticleDetailResponse(BaseModel):
-    id: int
-    title: str
-    url: str
-    published_at: Optional[str]
-    description: Optional[str]
-    tags: List[str]
-    author: str
-    published: bool
-    body_markdown: Optional[str]
-    body_html: Optional[str]
-    content: Optional[str]
+def ensure_list(val):
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        return [t.strip() for t in val.split(",") if t.strip()]
+    return []
 
 def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -299,7 +293,7 @@ def format_article_detail(article: Dict[str, Any]) -> Dict[str, Any]:
         "url": article.get("url", ""),
         "published_at": article.get("published_at"),
         "description": article.get("description"),
-        "tags": article.get("tag_list", []),
+        "tags": ensure_list(article.get("tag_list", article.get("tags", []))),
         "author": article.get("user", {}).get("username", "unknown"),
         "published": bool(article.get("published", False)),
         "body_markdown": article.get("body_markdown"),
@@ -393,7 +387,7 @@ def simplify_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "url": article.get("url"),
             "published_at": article.get("published_at"),
             "description": article.get("description"),
-            "tags": article.get("tag_list", []),
+            "tags": ensure_list(article.get("tag_list", article.get("tags", []))),
             "author": article.get("user", {}).get("username") if article.get("user") else None,
             "published": get_published(article)
         }
