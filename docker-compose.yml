@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "${PORT}:${PORT}"
+      - "${REST_PORT:-8001}:8001"
     env_file:
       - .env
     environment:

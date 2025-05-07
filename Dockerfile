@@ -13,8 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY . .
 
-# Expose the port
-EXPOSE ${PORT}
+# Expose the ports
+EXPOSE 8000
+EXPOSE 8001
 
 # Run the server
 CMD ["python", "server.py"]

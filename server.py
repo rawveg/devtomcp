@@ -28,12 +28,13 @@ import asyncio
 from typing import List, Dict, Any, Optional, Union, Annotated, Iterator
 from dotenv import load_dotenv
 from datetime import datetime
+import threading
 
 # Load environment variables from .env file
 load_dotenv()
 
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Query, Body, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field
@@ -41,6 +42,7 @@ from pydantic import BaseModel, Field
 # Load configuration from environment variables
 PORT = int(os.environ.get("PORT", 8000))
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+REST_PORT = int(os.environ.get("REST_PORT", 8001))
 
 # Configure logging based on environment variable
 logging.basicConfig(
@@ -50,7 +52,7 @@ logging.basicConfig(
 logger = logging.getLogger("devto-mcp")
 
 # Log configuration (without sensitive data)
-logger.info(f"Starting server with PORT={PORT}, LOG_LEVEL={LOG_LEVEL}")
+logger.info(f"Starting server with PORT={PORT}, LOG_LEVEL={LOG_LEVEL}, REST_PORT={REST_PORT}")
 
 # Constants
 DEVTO_API_BASE_URL = "https://dev.to/api"
@@ -248,37 +250,6 @@ unpublish_article_prompt = mcp.prompt()(unpublish_article_prompt)
 unpublish_article_by_title_prompt = mcp.prompt()(unpublish_article_by_title_prompt)
 
 # Helper functions for formatting responses
-def format_article_list(articles: List[Dict[str, Any]]) -> str:
-    """Format a list of articles for display."""
-    if not articles:
-        return "No articles found."
-        
-    result = []
-    result.append("# Articles")
-    result.append("")
-    
-    for article in articles:
-        title = article.get("title", "Untitled")
-        id = article.get("id", "Unknown ID")
-        username = article.get("user", {}).get("username", "unknown")
-        date = article.get("published_at", "Unknown date")
-        tags = article.get("tag_list", [])
-        tags_str = ", ".join(tags) if isinstance(tags, list) else tags
-        
-        result.append(f"## {title}")
-        result.append(f"ID: {id}")
-        result.append(f"Author: {username}")
-        result.append(f"Published: {date}")
-        result.append(f"Tags: {tags_str}")
-        result.append(f"URL: {article.get('url', '')}")
-        result.append("")
-        result.append(article.get("description", "No description available."))
-        result.append("")
-    
-    return "\n".join(result)
-
-def format_article_detail(article: Dict[str, Any]) -> str:
-    """Format a single article with full details."""
 def format_article_list(articles: List[Dict[str, Any]]) -> str:
     """Format a list of articles for display."""
     if not articles:
@@ -1284,6 +1255,174 @@ async def get_article_by_id(
         logger.error(f"Error getting article {article_id}: {str(e)}")
         raise MCPError(f"Failed to get article {article_id}: {str(e)}")
 
+# --- REST API Endpoints for MCP Tools ---
+from pydantic import BaseModel
+
+class CreateArticleRequest(BaseModel):
+    title: str
+    content: str
+    tags: str = ""
+    published: bool = False
+
+class UpdateArticleRequest(BaseModel):
+    id: Union[str, int]
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[str] = None
+    published: Optional[bool] = None
+
+# Browse latest articles
+@app.get("/browse_latest_articles")
+async def rest_browse_latest_articles(
+    page: int = Query(1),
+    per_page: int = Query(30),
+    max_pages: int = Query(10)
+):
+    """REST endpoint: Get the most recent articles from Dev.to across multiple pages."""
+    return await browse_latest_articles(page=page, per_page=per_page, max_pages=max_pages)
+
+# Browse popular articles
+@app.get("/browse_popular_articles")
+async def rest_browse_popular_articles(
+    page: int = Query(1),
+    per_page: int = Query(30),
+    max_pages: int = Query(10)
+):
+    """REST endpoint: Get the most popular articles from Dev.to across multiple pages."""
+    return await browse_popular_articles(page=page, per_page=per_page, max_pages=max_pages)
+
+# Browse articles by tag
+@app.get("/browse_articles_by_tag")
+async def rest_browse_articles_by_tag(
+    tag: str = Query(...),
+    page: int = Query(1),
+    per_page: int = Query(30),
+    max_pages: int = Query(10)
+):
+    """REST endpoint: Get articles with a specific tag across multiple pages."""
+    return await browse_articles_by_tag(tag=tag, page=page, per_page=per_page, max_pages=max_pages)
+
+# Get article by ID
+@app.get("/get_article/{id}")
+async def rest_get_article(id: str = Path(...)):
+    """REST endpoint: Get a specific article by ID."""
+    return await get_article(id=id)
+
+# Get article by title
+@app.get("/get_article_by_title/{title}")
+async def rest_get_article_by_title(title: str = Path(...)):
+    """REST endpoint: Get a specific article by title."""
+    return await get_article_by_title(title=title)
+
+# Get user profile
+@app.get("/get_user_profile/{username}")
+async def rest_get_user_profile(username: str = Path(...)):
+    """REST endpoint: Get profile information for a Dev.to user."""
+    return await get_user_profile(username=username)
+
+# Search articles
+@app.get("/search_articles")
+async def rest_search_articles(
+    query: str = Query(...),
+    page: int = Query(1),
+    max_pages: int = Query(30)
+):
+    """REST endpoint: Search for articles on Dev.to across multiple pages."""
+    return await search_articles(query=query, page=page, max_pages=max_pages)
+
+# Search articles by user
+@app.get("/search_articles_by_user/{username}")
+async def rest_search_articles_by_user(
+    username: str = Path(...),
+    page: int = Query(1),
+    per_page: int = Query(30),
+    max_pages: int = Query(30)
+):
+    """REST endpoint: Get all articles published by a specific Dev.to user."""
+    return await search_articles_by_user(username=username, page=page, per_page=per_page, max_pages=max_pages)
+
+# List my articles
+@app.get("/list_my_articles")
+async def rest_list_my_articles(
+    page: int = Query(1),
+    per_page: int = Query(30),
+    max_pages: int = Query(10)
+):
+    """REST endpoint: List your published articles across multiple pages."""
+    return await list_my_articles(page=page, per_page=per_page, max_pages=max_pages)
+
+# List my draft articles
+@app.get("/list_my_draft_articles")
+async def rest_list_my_draft_articles(
+    page: int = Query(1),
+    per_page: int = Query(30)
+):
+    """REST endpoint: List your draft articles on Dev.to."""
+    return await list_my_draft_articles(page=page, per_page=per_page)
+
+# List my scheduled articles
+@app.get("/list_my_scheduled_articles")
+async def rest_list_my_scheduled_articles(
+    page: int = Query(1),
+    per_page: int = Query(30)
+):
+    """REST endpoint: List your scheduled articles on Dev.to."""
+    return await list_my_scheduled_articles(page=page, per_page=per_page)
+
+# Create article
+@app.post("/create_article")
+async def rest_create_article(request: CreateArticleRequest):
+    """REST endpoint: Create a new article on Dev.to."""
+    return await create_article(
+        title=request.title,
+        content=request.content,
+        tags=request.tags,
+        published=request.published
+    )
+
+# Update article
+@app.post("/update_article")
+async def rest_update_article(request: UpdateArticleRequest):
+    """REST endpoint: Update an existing article on Dev.to."""
+    return await update_article(
+        id=request.id,
+        title=request.title,
+        content=request.content,
+        tags=request.tags,
+        published=request.published
+    )
+
+# Publish article
+@app.post("/publish_article/{article_id}")
+async def rest_publish_article(article_id: str = Path(...)):
+    """REST endpoint: Publish an article on Dev.to."""
+    return await publish_article(article_id=article_id)
+
+# Publish article by title
+@app.post("/publish_article_by_title/{title}")
+async def rest_publish_article_by_title(title: str = Path(...)):
+    """REST endpoint: Publish an article on Dev.to by title."""
+    return await publish_article_by_title(title=title)
+
+# Unpublish article
+@app.post("/unpublish_article/{article_id}")
+async def rest_unpublish_article(article_id: str = Path(...)):
+    """REST endpoint: Unpublish an article on Dev.to."""
+    return await unpublish_article(article_id=article_id)
+
+# Unpublish article by title
+@app.post("/unpublish_article_by_title/{title}")
+async def rest_unpublish_article_by_title(title: str = Path(...)):
+    """REST endpoint: Unpublish an article on Dev.to by title."""
+    return await unpublish_article_by_title(title=title)
+
+# Get article by ID (string version)
+@app.get("/get_article_by_id/{article_id}")
+async def rest_get_article_by_id(article_id: str = Path(...)):
+    """REST endpoint: Get a specific article by ID (string version)."""
+    return await get_article_by_id(article_id=article_id)
+# --- END REST API Endpoints ---
+
 # API endpoints
 
 @app.get("/")
@@ -1314,6 +1453,15 @@ if __name__ == "__main__":
     # Log server startup information
     logger.info(f"Server will be available at http://0.0.0.0:{PORT}")
     logger.info(f"SSE endpoint: http://0.0.0.0:{PORT}/sse")
-    
+    logger.info(f"REST API endpoint: http://0.0.0.0:{REST_PORT}")
+
+    # Start FastAPI REST server in a background thread if REST_PORT is set
+    def run_rest():
+        import uvicorn
+        uvicorn.run("server:app", host="0.0.0.0", port=REST_PORT, log_level="info")
+
+    rest_thread = threading.Thread(target=run_rest, daemon=True)
+    rest_thread.start()
+
     # Using FastMCP's built-in run method with SSE transport
     mcp.run(transport="sse", host="0.0.0.0", port=PORT) 
