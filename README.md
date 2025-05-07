@@ -28,6 +28,7 @@ An implementation of a Model Context Protocol (MCP) server for the Dev.to API, p
 | 🧠 Analyze User Profile         | Analyze a specific user profile (prompt-based, summary output)|
 | 📝 Create Article               | Create and publish new articles                   |
 | ✏️ Update Article               | Update your existing articles                     |
+| 📝 Update Article by Title      | Update your existing articles by title (resolves to ID)         |
 | 📜 List My Articles             | List your own published articles                  |
 | 📝 List My Draft Articles       | List your own draft articles                      |
 | 📝 List My Unpublished Articles | List your own unpublished articles                |
@@ -105,6 +106,10 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 
 ## 🛠️ MCP Tools
 
+### Analysing Content
+- `analyse_article` - Analyse a specific article
+- `analyse_user_profile` - Analyse a specific user
+
 ### Browsing Content
 - `browse_latest_articles()` - Get the most recent articles from Dev.to
 - `browse_popular_articles()` - Get the most popular articles
@@ -129,6 +134,55 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 - `publish_article_by_title(title)` - Publish your own articles by title
 - `unpublish_article_by_id(id)` - Unpublish your own articles by ID
 - `unpublish_article_by_title(title)` - Unpublish your own articles by title
+- `update_article_by_title(title, new_title=None, content=None, tags=None, published=None)` - Update an existing article by title (resolves to ID)
+
+---
+
+## 🌐 REST API & OpenAPI Tool Server
+
+The Dev.to MCP Server now supports **dual-mode operation**:
+
+| Mode         | Description                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| 🟢 SSE/MCP   | For LLM/agent integration, using the Model Context Protocol (MCP)           |
+| 🟦 REST/OpenAPI | For direct HTTP access, OpenAPI tool runners, and OpenAI-compatible tools |
+
+### 🚦 Switching Modes
+Set the mode in your `.env` file:
+
+```env
+SERVER_MODE=sse   # For SSE/MCP (default)
+# or
+SERVER_MODE=rest  # For REST API & OpenAPI toolserver
+```
+
+### 🔑 Authentication in REST Mode
+- Provide your Dev.to API key in the `Authorization` header as a Bearer token:
+  ```
+  Authorization: Bearer YOUR_DEVTO_API_KEY
+  ```
+- No need to set `DEVTO_API_KEY` in `.env` for REST mode.
+
+### 📖 OpenAPI & Swagger UI
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- OpenAPI schema: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+- Fully compatible with OpenAI's function calling, LangChain, and other OpenAPI tool runners.
+
+### 🧑‍💻 Example: List My Articles (REST)
+```bash
+curl -X GET "http://localhost:8000/list_my_articles?page=1&per_page=30&max_pages=10" \
+  -H "Authorization: Bearer YOUR_DEVTO_API_KEY"
+```
+
+### 🛠️ REST Endpoints
+- All major tools are available as REST endpoints (see `/docs` for details)
+- Each endpoint includes rich OpenAPI metadata, examples, and tags for easy discovery
+- `update_article_by_title` - Update your own articles by title (resolves to ID)
+
+### 🤖 Why This Matters
+- Use as a traditional REST API, an OpenAPI toolserver, or an LLM/agent tool provider—all from one codebase!
+- Plug-and-play with OpenAI, LangChain, and any OpenAPI-compatible client
+- Beautiful, interactive documentation out of the box
 
 ---
 
@@ -201,7 +255,7 @@ For deploying to Google Cloud Run:
    ```bash
    gcloud secrets create devto-api-key --data-file=- <<< "your_api_key_here"
    ```
-3. Deploy with the secret mounted:
+3. Deploy with the secret mounted in SSE mode:
    ```bash
    gcloud run deploy devtomcp \
       --source . \
@@ -210,6 +264,7 @@ For deploying to Google Cloud Run:
       --region [REGION] \
       --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
       --set-env-vars="DEVTO_API_KEY=<<DEVTO_API_KEY>>" \
+      --set-env-vars="SERVER_MODE=sse" \
       --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
       --format="json"
    ```
@@ -221,19 +276,45 @@ For deploying to Google Cloud Run:
    | `LOG_LEVEL` | Logging level (INFO, DEBUG, etc.) | `INFO` |
    | `DEVTO_API_KEY` | Dev.to API key | `None` |
    | `DEVTO_API_BASE_URL` | Dev.to API base URL | `https://dev.to/api` |
+   | `SERVER_MODE` | The server mode to deploy in | `sse` |
+
+   These variables must be set on the command line for gcloud run deploy as the .env file is not mounted to the container.
+
+   Alternative deploy in REST mode with OpenAPI Tools:
+   ```bash
+   gcloud run deploy devtomcp \
+      --source . \
+      --platform managed \
+      --allow-unauthenticated \
+      --region [REGION] \
+      --set-env-vars="LOG_LEVEL=<<LOG_LEVEL>>" \
+      --set-env-vars="SERVER_MODE=rest" \
+      --set-env-vars="DEVTO_API_BASE_URL=<<DEVTO_API_BASE_URL>>" \
+      --format="json"
+   ```
+
+   **Environment Variables**
+   
+   | Variable | Description | Default |
+   | --- | --- | --- |
+   | `LOG_LEVEL` | Logging level (INFO, DEBUG, etc.) | `INFO` |
+   | `SERVER_MODE` | Server mode to deploy in | `rest` |
+   | `DEVTO_API_BASE_URL` | Dev.to API base URL | `https://dev.to/api` |
 
    These variables must be set on the command line for gcloud run deploy as the .env file is not mounted to the container.
 
   **Region Selection**
   The region should be selected according to the region of your associated project. A list of available regions can be found [here](https://cloud.google.com/run/docs/locations).
 
-⚠️ **Security Warning:** 
+⚠️ **Security Warning - SSE Mode:** 
 - The `--allow-unauthenticated` flag makes your server publicly accessible
 - Since this is a single-user server with your API key, you MUST implement additional security measures:
   - Use [Cloud Run Authentication](https://cloud.google.com/run/docs/authenticating/overview)
   - Set up [Identity-Aware Proxy (IAP)](https://cloud.google.com/iap/docs/cloud-run-tutorial)
   - Configure [VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/overview)
   - Use [Ingress Controls](https://cloud.google.com/run/docs/securing/ingress)
+
+- When deploying in REST mode (recommended for Cloud Run) the above security considerations don't apply, as each request to the server in this mode needs to be accomanied by an Authorization Bearer Token `Authorization: Bearer <<your_dev_to_api_key_here>>` immediately limiting destructive access.
 
 See [GCP_DEPLOYMENT.md](./GCP_DEPLOYMENT.md) for detailed security configuration instructions.
 

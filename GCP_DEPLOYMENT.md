@@ -4,6 +4,61 @@ This guide provides step-by-step instructions for deploying the Dev.to MCP Serve
 
 ---
 
+## 🚦 Choosing a Deployment Mode: REST (OpenAPI) vs SSE (MCP)
+
+The Dev.to MCP Server supports two deployment modes:
+
+| Mode         | Description                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| 🟢 SSE/MCP   | For LLM/agent integration, using the Model Context Protocol (MCP)           |
+| 🟦 REST/OpenAPI | For direct HTTP access, OpenAPI tool runners, and OpenAI-compatible tools |
+
+### 🌟 **Recommended: REST/OpenAPI Mode**
+- **Best for most users and production deployments on Cloud Run**
+- Each request is authenticated via an `Authorization: Bearer <API_KEY>` header
+- No API key is stored in the container or environment
+- Fully compatible with OpenAI, LangChain, and other OpenAPI tool runners
+- Easier to secure: no destructive access unless a valid API key is provided per request
+
+#### 🚀 Deploying in REST Mode (Recommended)
+```bash
+gcloud run deploy devtomcp \
+  --source . \
+  --platform managed \
+  --allow-unauthenticated \
+  --region [REGION] \
+  --set-env-vars="LOG_LEVEL=INFO" \
+  --set-env-vars="SERVER_MODE=rest" \
+  --set-env-vars="DEVTO_API_BASE_URL=https://dev.to/api" \
+  --format="json"
+```
+
+### 🟢 SSE/MCP Mode (Agent/LLM Integration)
+- For advanced use cases where you need MCP/agent protocol support
+- API key is stored in the environment (`DEVTO_API_KEY`)
+- **⚠️ Requires strict infrastructure-level security controls!**
+- All requests use the same API key, so unauthorized access could be destructive
+
+#### 🚀 Deploying in SSE/MCP Mode
+```bash
+gcloud run deploy devtomcp \
+  --source . \
+  --platform managed \
+  --allow-unauthenticated \
+  --region [REGION] \
+  --set-env-vars="LOG_LEVEL=INFO" \
+  --set-env-vars="DEVTO_API_KEY=your_dev_to_api_key_here" \
+  --set-env-vars="SERVER_MODE=sse" \
+  --set-env-vars="DEVTO_API_BASE_URL=https://dev.to/api" \
+  --format="json"
+```
+
+### 🔒 Security Implications
+- **REST mode:** Each request must include a valid API key, so destructive access is limited to those with a key. Safer for public endpoints.
+- **SSE mode:** All requests use the same API key from the environment. You MUST implement Cloud Run authentication, IAP, or other access controls to prevent unauthorized use.
+
+---
+
 ## ✅ Prerequisites
 
 - Google Cloud Platform account with billing enabled
