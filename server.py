@@ -1077,7 +1077,7 @@ async def create_article(
                 "title": title,
                 "body_markdown": content,
                 "published": bool(published),
-                "tags": tag_list
+                **({"tags": tag_list} if tag_list else {})
             }
         }
         article_data = safe_json_payload(article_data)
@@ -1121,7 +1121,8 @@ async def update_article(
             article_data["article"]["body_markdown"] = content
         if tags is not None:
             tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
-            article_data["article"]["tags"] = tag_list
+            if tag_list:
+                article_data["article"]["tags"] = tag_list
         if published is not None:
             article_data["article"]["published"] = bool(published)
         article_data = safe_json_payload(article_data)
