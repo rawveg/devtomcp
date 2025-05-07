@@ -1442,7 +1442,52 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
     )
 
 # Publish article
-@app.post("/publish_article/{article_id}", tags=["Publishing"], summary="Publish Article", description="Publish an article on Dev.to by article ID. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The published article.")
+@app.post(
+    "/publish_article/{article_id}",
+    tags=["Publishing"],
+    summary="Publish Article",
+    description="Publish an article on Dev.to by article ID. Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The published article.",
+    responses={
+        200: {
+            "description": "Article published successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful publish",
+                            "value": {
+                                "status": "success",
+                                "action": "published",
+                                "id": 2466526,
+                                "url": "https://dev.to/rawveg/test-article-1knc",
+                                "title": "Test Article"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error publishing article",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to publish",
+                            "value": {
+                                "status": "error",
+                                "error": "Article not found or already published"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def rest_publish_article(article_id: str = Path(..., description="The ID of the article to publish", example="123456"), request: Request = None):
     api_key = get_api_key(request)
     if not api_key:
@@ -1450,7 +1495,52 @@ async def rest_publish_article(article_id: str = Path(..., description="The ID o
     return await publish_article(article_id=article_id, ctx=None, api_key=api_key)
 
 # Publish article by title
-@app.post("/publish_article_by_title/{title}", tags=["Publishing"], summary="Publish Article by Title", description="Publish an article on Dev.to by title. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The published article.")
+@app.post(
+    "/publish_article_by_title/{title}",
+    tags=["Publishing"],
+    summary="Publish Article by Title",
+    description="Publish an article on Dev.to by title. Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The published article.",
+    responses={
+        200: {
+            "description": "Article published successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful publish",
+                            "value": {
+                                "status": "success",
+                                "action": "published",
+                                "id": 2466526,
+                                "url": "https://dev.to/rawveg/test-article-1knc",
+                                "title": "Test Article"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error publishing article",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to publish",
+                            "value": {
+                                "status": "error",
+                                "error": "Article not found or already published"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def rest_publish_article_by_title(title: str = Path(..., description="The title of the article to publish", example="My First Article"), request: Request = None):
     api_key = get_api_key(request)
     if not api_key:
@@ -1458,7 +1548,52 @@ async def rest_publish_article_by_title(title: str = Path(..., description="The 
     return await publish_article_by_title(title=title, ctx=None, api_key=api_key)
 
 # Unpublish article
-@app.post("/unpublish_article/{article_id}", tags=["Publishing"], summary="Unpublish Article", description="Unpublish an article on Dev.to by article ID. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The unpublished article.")
+@app.post(
+    "/unpublish_article/{article_id}",
+    tags=["Publishing"],
+    summary="Unpublish Article",
+    description="Unpublish an article on Dev.to by article ID. Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The unpublished article.",
+    responses={
+        200: {
+            "description": "Article unpublished successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful unpublish",
+                            "value": {
+                                "status": "success",
+                                "action": "unpublished",
+                                "id": 2466526,
+                                "url": "https://dev.to/rawveg/test-article-1knc",
+                                "title": "Test Article"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error unpublishing article",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to unpublish",
+                            "value": {
+                                "status": "error",
+                                "error": "Article not found or already unpublished"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def rest_unpublish_article(article_id: str = Path(..., description="The ID of the article to unpublish", example="123456"), request: Request = None):
     api_key = get_api_key(request)
     if not api_key:
@@ -1466,7 +1601,52 @@ async def rest_unpublish_article(article_id: str = Path(..., description="The ID
     return await unpublish_article(article_id=article_id, ctx=None, api_key=api_key)
 
 # Unpublish article by title
-@app.post("/unpublish_article_by_title/{title}", tags=["Publishing"], summary="Unpublish Article by Title", description="Unpublish an article on Dev.to by title. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The unpublished article.")
+@app.post(
+    "/unpublish_article_by_title/{title}",
+    tags=["Publishing"],
+    summary="Unpublish Article by Title",
+    description="Unpublish an article on Dev.to by title. Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The unpublished article.",
+    responses={
+        200: {
+            "description": "Article unpublished successfully",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful unpublish",
+                            "value": {
+                                "status": "success",
+                                "action": "unpublished",
+                                "id": 2466526,
+                                "url": "https://dev.to/rawveg/test-article-1knc",
+                                "title": "Test Article"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error unpublishing article",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to unpublish",
+                            "value": {
+                                "status": "error",
+                                "error": "Article not found or already unpublished"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def rest_unpublish_article_by_title(title: str = Path(..., description="The title of the article to unpublish", example="My First Article"), request: Request = None):
     api_key = get_api_key(request)
     if not api_key:
