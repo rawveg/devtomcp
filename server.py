@@ -918,13 +918,12 @@ async def list_my_articles(
 async def list_my_draft_articles(
     page: int = 1,
     per_page: int = 30,
+    max_pages: int = 10,
     ctx: Context = None,
     api_key: str = None
 ) -> List[Dict[str, Any]]:
     """
-    List your draft articles on Dev.to.
-    This tool will fetch your draft articles from Dev.to, looking through multiple
-    pages until it reaches the maximum page limit.
+    List your draft articles on Dev.to, paginated.
     """
     try:
         if api_key is None:
@@ -932,12 +931,24 @@ async def list_my_draft_articles(
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         client = DevToClient(api_key=api_key)
-        articles = await client.get(
-            "/articles/me/unpublished",
-            params={"page": page, "per_page": per_page}
-        )
-        simplified_articles = simplify_articles(articles)
-        return simplified_articles
+        all_articles = []
+        current_page = page
+        max_page_to_search = page + max_pages - 1
+        while current_page <= max_page_to_search:
+            try:
+                articles = await client.get(
+                    "/articles/me/unpublished",
+                    params={"page": current_page, "per_page": per_page}
+                )
+                if not articles or len(articles) == 0:
+                    break
+                all_articles.extend(articles)
+                current_page += 1
+            except Exception as e:
+                logger.warning(f"Error fetching your draft articles on page {current_page}: {str(e)}")
+                current_page += 1
+        simplified_articles = simplify_articles(all_articles)
+        return ArticleListResponse.create(simplified_articles)
     except Exception as e:
         logger.error(f"Error listing draft articles: {str(e)}")
         raise MCPError(f"Failed to list your draft articles: {str(e)}")
