@@ -1162,7 +1162,9 @@ async def publish_article(
         return {
             "status": "success",
             "action": "published",
-            "article": response
+            "id": response.get("id"),
+            "url": response.get("url"),
+            "title": response.get("title")
         }
     except Exception as e:
         return {"error": str(e)}
@@ -1186,14 +1188,7 @@ async def publish_article_by_title(
         response = await publish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        # If response is already wrapped, just return it
-        if isinstance(response, dict) and "status" in response and "action" in response and "article" in response:
-            return response
-        return {
-            "status": "success",
-            "action": "published",
-            "article": response
-        }
+        return response
     except Exception as e:
         return {"error": str(e)}
 
@@ -1217,7 +1212,9 @@ async def unpublish_article(
         return {
             "status": "success",
             "action": "unpublished",
-            "article": response
+            "id": response.get("id"),
+            "url": response.get("url"),
+            "title": response.get("title")
         }
     except Exception as e:
         return {"error": str(e)}
@@ -1241,14 +1238,7 @@ async def unpublish_article_by_title(
         response = await unpublish_article(article_id, ctx=ctx, api_key=api_key)
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        # If response is already wrapped, just return it
-        if isinstance(response, dict) and "status" in response and "action" in response and "article" in response:
-            return response
-        return {
-            "status": "success",
-            "action": "unpublished",
-            "article": response
-        }
+        return response
     except Exception as e:
         return {"error": str(e)}
 
