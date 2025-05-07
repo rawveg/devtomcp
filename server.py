@@ -1332,17 +1332,25 @@ async def update_article_by_title(
 from pydantic import BaseModel
 
 class CreateArticleRequest(BaseModel):
-    title: str = Field(..., example="My First Article", description="The title of the article.")
-    content: str = Field(..., example="# Hello World\nThis is my article.", description="The markdown content of the article.")
-    tags: str = Field("", example="python,webdev", description="Comma-separated list of tags (e.g., 'python,webdev').")
-    published: bool = Field(False, example=False, description="Whether to publish immediately (default: False).")
+    title: str = Field(..., description="The title of the article.", examples={"default": {"summary": "Default", "value": "My First Article"}})
+    content: str = Field(..., description="The markdown content of the article.", examples={"default": {"summary": "Default", "value": "# Hello World\nThis is my article."}})
+    tags: str = Field("", description="Comma-separated list of tags (e.g., 'python,webdev').", examples={"default": {"summary": "Default", "value": "python,webdev"}})
+    published: bool = Field(False, description="Whether to publish immediately (default: False).", examples={"default": {"summary": "Default", "value": False}})
 
 class UpdateArticleRequest(BaseModel):
-    id: Union[str, int] = Field(..., example=123456, description="The ID of the article to update.")
-    title: Optional[str] = Field(None, example="Updated Title", description="New title for the article.")
-    content: Optional[str] = Field(None, example="# Updated Content", description="New markdown content.")
-    tags: Optional[str] = Field(None, example="python,ai", description="New comma-separated list of tags.")
-    published: Optional[bool] = Field(None, example=True, description="New publish status.")
+    id: Union[str, int] = Field(..., description="The ID of the article to update.", examples={"default": {"summary": "Default", "value": 123456}})
+    title: Optional[str] = Field(None, description="New title for the article.", examples={"default": {"summary": "Default", "value": "Updated Title"}})
+    content: Optional[str] = Field(None, description="New markdown content.", examples={"default": {"summary": "Default", "value": "# Updated Content"}})
+    tags: Optional[str] = Field(None, description="New comma-separated list of tags.", examples={"default": {"summary": "Default", "value": "python,ai"}})
+    published: Optional[bool] = Field(None, description="New publish status.", examples={"default": {"summary": "Default", "value": True}})
+
+# Add this model above the endpoint definitions
+class UpdateArticleByTitleRequest(BaseModel):
+    title: str = Field(..., examples={"default": {"summary": "Title", "value": "Test Article"}})
+    new_title: Optional[str] = Field(None, examples={"default": {"summary": "New Title", "value": "Updated Title"}})
+    content: Optional[str] = Field(None, examples={"default": {"summary": "Content", "value": "# Updated Content"}})
+    tags: Optional[str] = Field(None, examples={"default": {"summary": "Tags", "value": "python,ai"}})
+    published: Optional[bool] = Field(None, examples={"default": {"summary": "Published", "value": True}})
 
 # Browse latest articles
 @app.get("/browse_latest_articles")
@@ -1417,9 +1425,9 @@ async def rest_search_articles_by_user(
 # List my articles
 @app.get("/list_my_articles", tags=["Articles"], summary="List My Published Articles", description="List my published articles across multiple pages. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_articles(
-    page: int = Query(1, description="Starting page number for pagination", example=1),
-    per_page: int = Query(30, description="Number of articles per page", example=30),
-    max_pages: int = Query(10, description="Maximum number of pages to search", example=1),
+    page: int = Query(1, description="Starting page number for pagination", examples={"default": {"summary": "Default", "value": 1}}),
+    per_page: int = Query(30, description="Number of articles per page", examples={"default": {"summary": "Default", "value": 30}}),
+    max_pages: int = Query(10, description="Maximum number of pages to search", examples={"default": {"summary": "Default", "value": 1}}),
     request: Request = None
 ):
     api_key = get_api_key(request)
@@ -1430,8 +1438,8 @@ async def rest_list_my_articles(
 # List my draft articles
 @app.get("/list_my_draft_articles", tags=["Articles"], summary="List My Draft Articles", description="List my draft articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_draft_articles(
-    page: int = Query(1, description="Starting page number for pagination", example=1),
-    per_page: int = Query(30, description="Number of articles per page", example=30),
+    page: int = Query(1, description="Starting page number for pagination", examples={"default": {"summary": "Default", "value": 1}}),
+    per_page: int = Query(30, description="Number of articles per page", examples={"default": {"summary": "Default", "value": 30}}),
     request: Request = None
 ):
     api_key = get_api_key(request)
@@ -1449,8 +1457,8 @@ async def rest_list_my_draft_articles(
     status_code=status.HTTP_200_OK
 )
 async def rest_list_my_scheduled_articles(
-    page: int = Query(1, description="Starting page number for pagination", example=1),
-    per_page: int = Query(30, description="Number of articles per page", example=30),
+    page: int = Query(1, description="Starting page number for pagination", examples={"default": {"summary": "Default", "value": 1}}),
+    per_page: int = Query(30, description="Number of articles per page", examples={"default": {"summary": "Default", "value": 30}}),
     request: Request = None
 ):
     api_key = get_api_key(request)
@@ -1469,7 +1477,7 @@ async def rest_list_my_scheduled_articles(
 
 # Create article
 @app.post("/create_article", tags=["Articles"], summary="Create My Article", description="Create my new article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_201_CREATED, response_description="The created article.")
-async def rest_create_article(request: Request, body: CreateArticleRequest = Body(..., example={"title": "My First Article", "content": "# Hello World\nThis is my article.", "tags": "python,webdev", "published": False})):
+async def rest_create_article(request: Request, body: CreateArticleRequest = Body(..., examples={"default": {"summary": "Default", "value": {"title": "My First Article", "content": "# Hello World\nThis is my article.", "tags": "python,webdev", "published": False}}})):
     api_key = get_api_key(request)
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
@@ -1530,7 +1538,7 @@ async def rest_create_article(request: Request, body: CreateArticleRequest = Bod
         }
     }
 )
-async def rest_update_article(request: Request, body: UpdateArticleRequest = Body(..., example={"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
+async def rest_update_article(request: Request, body: UpdateArticleRequest = Body(..., examples={"default": {"summary": "Default", "value": {"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True}}})):
     api_key = get_api_key(request)
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
@@ -1597,7 +1605,7 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
         }
     }
 )
-async def rest_update_article_by_title(request: Request, body: UpdateArticleByTitleRequest = Body(..., example={"title": "Test Article", "new_title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
+async def rest_update_article_by_title(request: Request, body: UpdateArticleByTitleRequest = Body(..., examples={"default": {"summary": "Default", "value": {"title": "Test Article", "new_title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True}}})):
     api_key = get_api_key(request)
     if not api_key:
         raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
