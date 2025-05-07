@@ -1559,6 +1559,60 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
         api_key=api_key
     )
 
+# TEMPORARY: LLM/tool compatibility hack. Accept POST as well as PATCH for /update_article.
+# Remove this once LLMs/tooling support PATCH correctly.
+@app.post(
+    "/update_article",
+    tags=["Articles"],
+    summary="Update My Article by Numeric ID (POST, LLM compatibility)",
+    description="TEMPORARY: Accepts POST for LLM/tool compatibility. Use PATCH for proper RESTful updates. The 'id' field must be an integer. If you only know the title, use /update_article_by_title instead. Requires authentication.",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    response_description="The updated article.",
+    responses={
+        200: {
+            "description": "Article updated successfully (POST)",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "success": {
+                            "summary": "Successful update (POST)",
+                            "value": {
+                                "success": True,
+                                "status": "success",
+                                "id": 2466526,
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been updated successfully. (POST)"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error updating article (e.g. non-numeric ID, POST)",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "failure": {
+                            "summary": "Failure to update (non-numeric ID, POST)",
+                            "value": {
+                                "success": False,
+                                "status": "error",
+                                "error": "The 'id' field must be a numeric article ID. If you only know the title, use /update_article_by_title instead.",
+                                "message": "Failed to update the article: The 'id' field must be a numeric article ID. If you only know the title, use /update_article_by_title instead. (POST)"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+async def rest_update_article_post(request: Request, body: UpdateArticleRequest = Body(..., examples={"default": {"summary": "Default", "value": {"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True}}})):
+    # Call the same logic as PATCH
+    return await rest_update_article(request, body)
+
 @app.patch(
     "/update_article_by_title",
     tags=["Articles"],
