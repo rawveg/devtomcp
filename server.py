@@ -1056,47 +1056,30 @@ async def create_article(
         if api_key is None:
             api_key = get_api_key()
         if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
+            return {"error": "API key is required for this operation. Please provide a Dev.to API key in your server environment.", "status_code": 401}
         client = DevToClient(api_key=api_key)
-        
-        # Process tags
-        tag_list = []
-        if tags:
-            tag_list = [tag.strip() for tag in tags.split(",")]
-        
-        # Prepare article data
+        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()] if tags else []
         article_data = {
             "article": {
                 "title": title,
                 "body_markdown": content,
-                "published": published,
+                "published": bool(published),
                 "tags": tag_list
             }
         }
-        
-        # Report progress at the start
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=50, total=100)
-            
-        response = await client.post("/articles", article_data)
-        
-        # Report progress after completion
+        try:
+            response = await client.post("/articles", article_data)
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Dev.to API error: {e.response.status_code} - {e.response.text}", "status_code": e.response.status_code}
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
-        return {
-            "title": response.get("title"),
-            "id": response.get("id"),
-            "url": response.get("url"),
-            "status": "Published" if response.get("published") else "Draft"
-        }
+        return format_article_detail(response)
     except Exception as e:
-        logger.error(f"Error creating article: {str(e)}")
-        raise MCPError(f"Failed to create article: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def update_article(
@@ -1115,50 +1098,32 @@ async def update_article(
         if api_key is None:
             api_key = get_api_key()
         if not api_key:
-            raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
+            return {"error": "API key is required for this operation. Please provide a Dev.to API key in your server environment.", "status_code": 401}
         client = DevToClient(api_key=api_key)
-        
-        # Prepare update data
         article_data = {"article": {}}
-        
         if title is not None:
             article_data["article"]["title"] = title
-        
         if content is not None:
             article_data["article"]["body_markdown"] = content
-        
         if tags is not None:
-            tag_list = [tag.strip() for tag in tags.split(",")]
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
             article_data["article"]["tags"] = tag_list
-        
         if published is not None:
-            article_data["article"]["published"] = published
-        
-        # Report progress at the start
+            article_data["article"]["published"] = bool(published)
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-            
-        response = await client.put(f"/articles/{id}", article_data)
-        
-        # Report progress after completion
+        try:
+            response = await client.put(f"/articles/{id}", article_data)
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Dev.to API error: {e.response.status_code} - {e.response.text}", "status_code": e.response.status_code}
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
-        return {
-            "title": response.get("title"),
-            "id": response.get("id"),
-            "url": response.get("url"),
-            "status": "Published" if response.get("published") else "Draft"
-        }
+        return format_article_detail(response)
     except Exception as e:
-        logger.error(f"Error updating article: {str(e)}")
-        raise MCPError(f"Failed to update article {id}: {str(e)}")
+        return {"error": str(e)}
 
-# publish article calls the update article tool with published set to true
 @mcp.tool()
 async def publish_article(
     article_id: Annotated[str, Field(description="The ID of the article to publish")],
@@ -1167,28 +1132,18 @@ async def publish_article(
 ) -> Dict[str, Any]:
     """
     Publish an article on Dev.to.
-
-    This tool updates the article with the given ID so that it is published.
     """
     try:
-        # Report progress at the start
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-            
         response = await update_article(article_id, published=True, ctx=ctx, api_key=api_key)
-        
-        # Report progress after completion
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
         return response
     except Exception as e:
-        logger.error(f"Error publishing article: {str(e)}")
-        raise MCPError(f"Failed to publish article {article_id}: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def publish_article_by_title(
@@ -1198,30 +1153,20 @@ async def publish_article_by_title(
 ) -> Dict[str, Any]:
     """
     Publish an article on Dev.to. by title
-
-    This tool retrieves the article with the given title and updates it so that it is published.
     """
     try:
-        # Report progress at the start
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-            
         article = await get_article_by_title(title)
         article_id = article.get("id")
         response = await publish_article(article_id, ctx=ctx, api_key=api_key)
-        
-        # Report progress after completion
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
         return response
     except Exception as e:
-        logger.error(f"Error publishing article by title: {str(e)}")
-        raise MCPError(f"Failed to publish article by title {title}: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def unpublish_article(
@@ -1231,29 +1176,18 @@ async def unpublish_article(
 ) -> Dict[str, Any]:
     """
     Unpublish an article on Dev.to.
-
-    This tool updates the article with the given ID so that it is unpublished.
     """
     try:
-        # Report progress at the start
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-            
-        # Unpublish the article using dedicated endpoint
         response = await update_article(article_id, published=False, ctx=ctx, api_key=api_key)
-        
-        # Report progress after completion
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
         return response
     except Exception as e:
-        logger.error(f"Error unpublishing article: {str(e)}")
-        raise MCPError(f"Failed to unpublish article {article_id}: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def unpublish_article_by_title(
@@ -1263,30 +1197,20 @@ async def unpublish_article_by_title(
 ) -> Dict[str, Any]:
     """
     Unpublish an article on Dev.to. by title
-
-    This tool retrieves the article with the given title and updates it so that it is unpublished.
     """
     try:
-        # Report progress at the start
         if ctx:
             await ctx.report_progress(progress=25, total=100)
-            
-        # Report progress before submission
         if ctx:
             await ctx.report_progress(progress=75, total=100)
-            
         article = await get_article_by_title(title)
         article_id = article.get("id")
         response = await unpublish_article(article_id, ctx=ctx, api_key=api_key)
-        
-        # Report progress after completion
         if ctx:
             await ctx.report_progress(progress=100, total=100)
-        
         return response
     except Exception as e:
-        logger.error(f"Error unpublishing article by title: {str(e)}")
-        raise MCPError(f"Failed to unpublish article by title {title}: {str(e)}")
+        return {"error": str(e)}
 
 @mcp.tool()
 async def get_article_by_id(
