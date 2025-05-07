@@ -105,6 +105,10 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 
 ## 🛠️ MCP Tools
 
+### Analysing Content
+- `analyse_article` - Analyse a specific article
+- `analyse_user_profile` - Analyse a specific user profile
+
 ### Browsing Content
 - `browse_latest_articles()` - Get the most recent articles from Dev.to
 - `browse_popular_articles()` - Get the most popular articles
@@ -129,6 +133,53 @@ The server will be available at [http://localhost:8000](http://localhost:8000) w
 - `publish_article_by_title(title)` - Publish your own articles by title
 - `unpublish_article_by_id(id)` - Unpublish your own articles by ID
 - `unpublish_article_by_title(title)` - Unpublish your own articles by title
+
+---
+
+## 🌐 REST API & OpenAPI Tool Server
+
+The Dev.to MCP Server now supports **dual-mode operation**:
+
+| Mode         | Description                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| 🟢 SSE/MCP   | For LLM/agent integration, using the Model Context Protocol (MCP)           |
+| 🟦 REST/OpenAPI | For direct HTTP access, OpenAPI tool runners, and OpenAI-compatible tools |
+
+### 🚦 Switching Modes
+Set the mode in your `.env` file:
+
+```env
+SERVER_MODE=sse   # For SSE/MCP (default)
+# or
+SERVER_MODE=rest  # For REST API & OpenAPI toolserver
+```
+
+### 🔑 Authentication in REST Mode
+- Provide your Dev.to API key in the `Authorization` header as a Bearer token:
+  ```
+  Authorization: Bearer YOUR_DEVTO_API_KEY
+  ```
+- No need to set `DEVTO_API_KEY` in `.env` for REST mode.
+
+### 📖 OpenAPI & Swagger UI
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- OpenAPI schema: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+- Fully compatible with OpenAI's function calling, LangChain, and other OpenAPI tool runners.
+
+### 🧑‍💻 Example: List My Articles (REST)
+```bash
+curl -X GET "http://localhost:8000/list_my_articles?page=1&per_page=30&max_pages=10" \
+  -H "Authorization: Bearer YOUR_DEVTO_API_KEY"
+```
+
+### 🛠️ REST Endpoints
+- All major tools are available as REST endpoints (see `/docs` for details)
+- Each endpoint includes rich OpenAPI metadata, examples, and tags for easy discovery
+
+### 🤖 Why This Matters
+- Use as a traditional REST API, an OpenAPI toolserver, or an LLM/agent tool provider—all from one codebase!
+- Plug-and-play with OpenAI, LangChain, and any OpenAPI-compatible client
+- Beautiful, interactive documentation out of the box
 
 ---
 

@@ -34,13 +34,13 @@ import threading
 load_dotenv()
 
 import httpx
-from fastapi import FastAPI, Request, Response, Query, Body, Path
+from fastapi import FastAPI, Request, Response, Query, Body, Path, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field
 
 # Load configuration from environment variables
-PORT = int(os.environ.get("PORT", 8000))
+PORT = int(os.environ.get("PORT", 8080))
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 REST_PORT = int(os.environ.get("REST_PORT", 8001))
 
@@ -347,9 +347,18 @@ def format_user_profile(user: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 # Helper function to get API key from server environment
-def get_api_key() -> str:
+def get_api_key(request: Request = None) -> str:
     """Get the API key from server environment."""
-    return os.environ.get('DEVTO_API_KEY')
+    mode = os.environ.get("SERVER_MODE", "sse").lower()
+    if mode == "rest":
+        if request is None:
+            return None
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            return auth_header[7:].strip()
+        return None
+    else:
+        return os.environ.get('DEVTO_API_KEY')
 
 # Helper class for returning structured data directly (without using MCPResponse)
 class ArticleListResponse:
@@ -835,10 +844,11 @@ async def search_articles_by_user(
 
 @mcp.tool()
 async def list_my_articles(
-    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
-    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
-    max_pages: Annotated[int, Field(description="Maximum number of pages to search")] = 10,
-    ctx: Context = None
+    page: int = 1,
+    per_page: int = 30,
+    max_pages: int = 10,
+    ctx: Context = None,
+    api_key: str = None
 ) -> List[Dict[str, Any]]:
     """
     List your published articles across multiple pages.
@@ -847,8 +857,8 @@ async def list_my_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Get API key from server environment
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
@@ -906,9 +916,10 @@ async def list_my_articles(
 
 @mcp.tool()
 async def list_my_draft_articles(
-    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
-    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
-    ctx: Context = None
+    page: int = 1,
+    per_page: int = 30,
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     List your draft articles on Dev.to.
@@ -917,8 +928,8 @@ async def list_my_draft_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Get API key from server environment
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
@@ -940,9 +951,10 @@ async def list_my_draft_articles(
 
 @mcp.tool()
 async def list_my_scheduled_articles(
-    page: Annotated[int, Field(description="Starting page number for pagination")] = 1,
-    per_page: Annotated[int, Field(description="Number of articles per page")] = 30,
-    ctx: Context = None
+    page: int = 1,
+    per_page: int = 30,
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     List your scheduled articles on Dev.to.
@@ -951,8 +963,8 @@ async def list_my_scheduled_articles(
     pages until it reaches the maximum page limit.
     """
     try:
-        # Get API key from server environment
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
         
@@ -981,18 +993,17 @@ async def create_article(
     content: Annotated[str, Field(description="The markdown content of the article")],
     tags: Annotated[str, Field(description="Comma-separated list of tags (e.g., 'python,webdev')")] = "",
     published: Annotated[bool, Field(description="Whether to publish immediately (default: False)")] = False,
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Create a new article on Dev.to.
     """
     try:
-        # Get API key from server environment
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
-        
-        # Create a client with the API key
         client = DevToClient(api_key=api_key)
         
         # Process tags
@@ -1041,18 +1052,17 @@ async def update_article(
     content: Annotated[Optional[str], Field(description="New markdown content")] = None,
     tags: Annotated[Optional[str], Field(description="New comma-separated list of tags")] = None,
     published: Annotated[Optional[bool], Field(description="New publish status")] = None,
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Update an existing article on Dev.to.
     """
     try:
-        # Get API key from server environment
-        api_key = get_api_key()
+        if api_key is None:
+            api_key = get_api_key()
         if not api_key:
             raise MCPError("API key is required for this operation. Please provide a Dev.to API key in your server environment.", 401)
-        
-        # Create a client with the API key
         client = DevToClient(api_key=api_key)
         
         # Prepare update data
@@ -1099,7 +1109,8 @@ async def update_article(
 @mcp.tool()
 async def publish_article(
     article_id: Annotated[str, Field(description="The ID of the article to publish")],
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Publish an article on Dev.to.
@@ -1115,18 +1126,13 @@ async def publish_article(
         if ctx:
             await ctx.report_progress(progress=75, total=100)
             
-        response = await update_article(article_id, published=True)
+        response = await update_article(article_id, published=True, ctx=ctx, api_key=api_key)
         
         # Report progress after completion
         if ctx:
             await ctx.report_progress(progress=100, total=100)
         
-        return {
-            "title": response.get("title"),
-            "id": response.get("id"),
-            "url": response.get("url"),
-            "status": "Published"
-        }
+        return response
     except Exception as e:
         logger.error(f"Error publishing article: {str(e)}")
         raise MCPError(f"Failed to publish article {article_id}: {str(e)}")
@@ -1134,7 +1140,8 @@ async def publish_article(
 @mcp.tool()
 async def publish_article_by_title(
     title: Annotated[str, Field(description="The title of the article to publish")],
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Publish an article on Dev.to. by title
@@ -1152,7 +1159,7 @@ async def publish_article_by_title(
             
         article = await get_article_by_title(title)
         article_id = article.get("id")
-        response = await publish_article(article_id)
+        response = await publish_article(article_id, ctx=ctx, api_key=api_key)
         
         # Report progress after completion
         if ctx:
@@ -1166,7 +1173,8 @@ async def publish_article_by_title(
 @mcp.tool()
 async def unpublish_article(
     article_id: Annotated[str, Field(description="The ID of the article to unpublish")],
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Unpublish an article on Dev.to.
@@ -1183,7 +1191,7 @@ async def unpublish_article(
             await ctx.report_progress(progress=75, total=100)
             
         # Unpublish the article using dedicated endpoint
-        response = await update_article(article_id, published=False)
+        response = await update_article(article_id, published=False, ctx=ctx, api_key=api_key)
         
         # Report progress after completion
         if ctx:
@@ -1197,7 +1205,8 @@ async def unpublish_article(
 @mcp.tool()
 async def unpublish_article_by_title(
     title: Annotated[str, Field(description="The title of the article to unpublish")],
-    ctx: Context = None
+    ctx: Context = None,
+    api_key: str = None
 ) -> Dict[str, Any]:
     """
     Unpublish an article on Dev.to. by title
@@ -1215,7 +1224,7 @@ async def unpublish_article_by_title(
             
         article = await get_article_by_title(title)
         article_id = article.get("id")
-        response = await unpublish_article(article_id)
+        response = await unpublish_article(article_id, ctx=ctx, api_key=api_key)
         
         # Report progress after completion
         if ctx:
@@ -1259,17 +1268,26 @@ async def get_article_by_id(
 from pydantic import BaseModel
 
 class CreateArticleRequest(BaseModel):
-    title: str
-    content: str
-    tags: str = ""
-    published: bool = False
+    title: str = Field(..., example="My First Article", description="The title of the article.")
+    content: str = Field(..., example="# Hello World\nThis is my article.", description="The markdown content of the article.")
+    tags: str = Field("", example="python,webdev", description="Comma-separated list of tags (e.g., 'python,webdev').")
+    published: bool = Field(False, example=False, description="Whether to publish immediately (default: False).")
 
 class UpdateArticleRequest(BaseModel):
-    id: Union[str, int]
-    title: Optional[str] = None
-    content: Optional[str] = None
-    tags: Optional[str] = None
-    published: Optional[bool] = None
+    id: Union[str, int] = Field(..., example=123456, description="The ID of the article to update.")
+    title: Optional[str] = Field(None, example="Updated Title", description="New title for the article.")
+    content: Optional[str] = Field(None, example="# Updated Content", description="New markdown content.")
+    tags: Optional[str] = Field(None, example="python,ai", description="New comma-separated list of tags.")
+    published: Optional[bool] = Field(None, example=True, description="New publish status.")
+
+class ArticleResponse(BaseModel):
+    id: int
+    title: str
+    url: str
+    published_at: str
+    description: str
+    tags: List[str]
+    author: str
 
 # Browse latest articles
 @app.get("/browse_latest_articles")
@@ -1342,79 +1360,104 @@ async def rest_search_articles_by_user(
     return await search_articles_by_user(username=username, page=page, per_page=per_page, max_pages=max_pages)
 
 # List my articles
-@app.get("/list_my_articles")
+@app.get("/list_my_articles", tags=["Articles"], summary="List My Published Articles", description="List your published articles across multiple pages. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_articles(
-    page: int = Query(1),
-    per_page: int = Query(30),
-    max_pages: int = Query(10)
+    page: int = Query(1, description="Starting page number for pagination", example=1),
+    per_page: int = Query(30, description="Number of articles per page", example=30),
+    max_pages: int = Query(10, description="Maximum number of pages to search", example=1),
+    request: Request = None
 ):
-    """REST endpoint: List your published articles across multiple pages."""
-    return await list_my_articles(page=page, per_page=per_page, max_pages=max_pages)
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await list_my_articles(page=page, per_page=per_page, max_pages=max_pages, ctx=None, api_key=api_key)
 
 # List my draft articles
-@app.get("/list_my_draft_articles")
+@app.get("/list_my_draft_articles", tags=["Articles"], summary="List My Draft Articles", description="List your draft articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_draft_articles(
-    page: int = Query(1),
-    per_page: int = Query(30)
+    page: int = Query(1, description="Starting page number for pagination", example=1),
+    per_page: int = Query(30, description="Number of articles per page", example=30),
+    request: Request = None
 ):
-    """REST endpoint: List your draft articles on Dev.to."""
-    return await list_my_draft_articles(page=page, per_page=per_page)
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await list_my_draft_articles(page=page, per_page=per_page, ctx=None, api_key=api_key)
 
 # List my scheduled articles
-@app.get("/list_my_scheduled_articles")
+@app.get("/list_my_scheduled_articles", tags=["Articles"], summary="List My Scheduled Articles", description="List your scheduled articles on Dev.to. Requires authentication.", response_model=List[ArticleResponse], status_code=status.HTTP_200_OK)
 async def rest_list_my_scheduled_articles(
-    page: int = Query(1),
-    per_page: int = Query(30)
+    page: int = Query(1, description="Starting page number for pagination", example=1),
+    per_page: int = Query(30, description="Number of articles per page", example=30),
+    request: Request = None
 ):
-    """REST endpoint: List your scheduled articles on Dev.to."""
-    return await list_my_scheduled_articles(page=page, per_page=per_page)
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await list_my_scheduled_articles(page=page, per_page=per_page, ctx=None, api_key=api_key)
 
 # Create article
-@app.post("/create_article")
-async def rest_create_article(request: CreateArticleRequest):
-    """REST endpoint: Create a new article on Dev.to."""
+@app.post("/create_article", tags=["Articles"], summary="Create Article", description="Create a new article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_201_CREATED, response_description="The created article.")
+async def rest_create_article(request: Request, body: CreateArticleRequest = Body(..., example={"title": "My First Article", "content": "# Hello World\nThis is my article.", "tags": "python,webdev", "published": False})):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
     return await create_article(
-        title=request.title,
-        content=request.content,
-        tags=request.tags,
-        published=request.published
+        title=body.title,
+        content=body.content,
+        tags=body.tags,
+        published=body.published,
+        ctx=None,
+        api_key=api_key
     )
 
 # Update article
-@app.post("/update_article")
-async def rest_update_article(request: UpdateArticleRequest):
-    """REST endpoint: Update an existing article on Dev.to."""
+@app.post("/update_article", tags=["Articles"], summary="Update Article", description="Update an existing article on Dev.to. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The updated article.")
+async def rest_update_article(request: Request, body: UpdateArticleRequest = Body(..., example={"id": 123456, "title": "Updated Title", "content": "# Updated Content", "tags": "python,ai", "published": True})):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
     return await update_article(
-        id=request.id,
-        title=request.title,
-        content=request.content,
-        tags=request.tags,
-        published=request.published
+        id=body.id,
+        title=body.title,
+        content=body.content,
+        tags=body.tags,
+        published=body.published,
+        ctx=None,
+        api_key=api_key
     )
 
 # Publish article
-@app.post("/publish_article/{article_id}")
-async def rest_publish_article(article_id: str = Path(...)):
-    """REST endpoint: Publish an article on Dev.to."""
-    return await publish_article(article_id=article_id)
+@app.post("/publish_article/{article_id}", tags=["Publishing"], summary="Publish Article", description="Publish an article on Dev.to by article ID. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The published article.")
+async def rest_publish_article(article_id: str = Path(..., description="The ID of the article to publish", example="123456"), request: Request = None):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await publish_article(article_id=article_id, ctx=None, api_key=api_key)
 
 # Publish article by title
-@app.post("/publish_article_by_title/{title}")
-async def rest_publish_article_by_title(title: str = Path(...)):
-    """REST endpoint: Publish an article on Dev.to by title."""
-    return await publish_article_by_title(title=title)
+@app.post("/publish_article_by_title/{title}", tags=["Publishing"], summary="Publish Article by Title", description="Publish an article on Dev.to by title. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The published article.")
+async def rest_publish_article_by_title(title: str = Path(..., description="The title of the article to publish", example="My First Article"), request: Request = None):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await publish_article_by_title(title=title, ctx=None, api_key=api_key)
 
 # Unpublish article
-@app.post("/unpublish_article/{article_id}")
-async def rest_unpublish_article(article_id: str = Path(...)):
-    """REST endpoint: Unpublish an article on Dev.to."""
-    return await unpublish_article(article_id=article_id)
+@app.post("/unpublish_article/{article_id}", tags=["Publishing"], summary="Unpublish Article", description="Unpublish an article on Dev.to by article ID. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The unpublished article.")
+async def rest_unpublish_article(article_id: str = Path(..., description="The ID of the article to unpublish", example="123456"), request: Request = None):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await unpublish_article(article_id=article_id, ctx=None, api_key=api_key)
 
 # Unpublish article by title
-@app.post("/unpublish_article_by_title/{title}")
-async def rest_unpublish_article_by_title(title: str = Path(...)):
-    """REST endpoint: Unpublish an article on Dev.to by title."""
-    return await unpublish_article_by_title(title=title)
+@app.post("/unpublish_article_by_title/{title}", tags=["Publishing"], summary="Unpublish Article by Title", description="Unpublish an article on Dev.to by title. Requires authentication.", response_model=dict, status_code=status.HTTP_200_OK, response_description="The unpublished article.")
+async def rest_unpublish_article_by_title(title: str = Path(..., description="The title of the article to unpublish", example="My First Article"), request: Request = None):
+    api_key = get_api_key(request)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key. Provide as 'Authorization: Bearer <API_KEY>' header.")
+    return await unpublish_article_by_title(title=title, ctx=None, api_key=api_key)
 
 # Get article by ID (string version)
 @app.get("/get_article_by_id/{article_id}")
@@ -1450,18 +1493,12 @@ async def health_check():
 
 # Main entry point - this is where we create our SSE transport
 if __name__ == "__main__":
-    # Log server startup information
-    logger.info(f"Server will be available at http://0.0.0.0:{PORT}")
-    logger.info(f"SSE endpoint: http://0.0.0.0:{PORT}/sse")
-    logger.info(f"REST API endpoint: http://0.0.0.0:{REST_PORT}")
+    mode = os.environ.get("SERVER_MODE", "sse").lower()
+    port = int(os.environ.get("PORT", 8080))
+    logger.info(f"Starting in {mode.upper()} mode on port {port}")
 
-    # Start FastAPI REST server in a background thread if REST_PORT is set
-    def run_rest():
+    if mode == "rest":
         import uvicorn
-        uvicorn.run("server:app", host="0.0.0.0", port=REST_PORT, log_level="info")
-
-    rest_thread = threading.Thread(target=run_rest, daemon=True)
-    rest_thread.start()
-
-    # Using FastMCP's built-in run method with SSE transport
-    mcp.run(transport="sse", host="0.0.0.0", port=PORT) 
+        uvicorn.run("server:app", host="0.0.0.0", port=port, log_level="info")
+    else:
+        mcp.run(transport="sse", host="0.0.0.0", port=port) 
