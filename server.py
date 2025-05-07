@@ -1160,14 +1160,21 @@ async def publish_article(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
         return {
+            "success": True,
             "status": "success",
             "action": "published",
             "id": response.get("id"),
             "url": response.get("url"),
-            "title": response.get("title")
+            "title": response.get("title"),
+            "message": f"Your article '{response.get('title')}' has been published successfully."
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e),
+            "message": f"Failed to publish the article: {str(e)}"
+        }
 
 @mcp.tool()
 async def publish_article_by_title(
@@ -1190,7 +1197,12 @@ async def publish_article_by_title(
             await ctx.report_progress(progress=100, total=100)
         return response
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e),
+            "message": f"Failed to publish the article: {str(e)}"
+        }
 
 @mcp.tool()
 async def unpublish_article(
@@ -1210,14 +1222,21 @@ async def unpublish_article(
         if ctx:
             await ctx.report_progress(progress=100, total=100)
         return {
+            "success": True,
             "status": "success",
             "action": "unpublished",
             "id": response.get("id"),
             "url": response.get("url"),
-            "title": response.get("title")
+            "title": response.get("title"),
+            "message": f"Your article '{response.get('title')}' has been unpublished successfully."
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e),
+            "message": f"Failed to unpublish the article: {str(e)}"
+        }
 
 @mcp.tool()
 async def unpublish_article_by_title(
@@ -1240,7 +1259,12 @@ async def unpublish_article_by_title(
             await ctx.report_progress(progress=100, total=100)
         return response
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e),
+            "message": f"Failed to unpublish the article: {str(e)}"
+        }
 
 @mcp.tool()
 async def get_article_by_id(
@@ -1459,11 +1483,13 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
                         "success": {
                             "summary": "Successful publish",
                             "value": {
+                                "success": True,
                                 "status": "success",
                                 "action": "published",
                                 "id": 2466526,
                                 "url": "https://dev.to/rawveg/test-article-1knc",
-                                "title": "Test Article"
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been published successfully."
                             }
                         }
                     }
@@ -1478,8 +1504,10 @@ async def rest_update_article(request: Request, body: UpdateArticleRequest = Bod
                         "failure": {
                             "summary": "Failure to publish",
                             "value": {
+                                "success": False,
                                 "status": "error",
-                                "error": "Article not found or already published"
+                                "error": "Article not found or already published",
+                                "message": "Failed to publish the article: Article not found or already published."
                             }
                         }
                     }
@@ -1512,11 +1540,13 @@ async def rest_publish_article(article_id: str = Path(..., description="The ID o
                         "success": {
                             "summary": "Successful publish",
                             "value": {
+                                "success": True,
                                 "status": "success",
                                 "action": "published",
                                 "id": 2466526,
                                 "url": "https://dev.to/rawveg/test-article-1knc",
-                                "title": "Test Article"
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been published successfully."
                             }
                         }
                     }
@@ -1531,8 +1561,10 @@ async def rest_publish_article(article_id: str = Path(..., description="The ID o
                         "failure": {
                             "summary": "Failure to publish",
                             "value": {
+                                "success": False,
                                 "status": "error",
-                                "error": "Article not found or already published"
+                                "error": "Article not found or already published",
+                                "message": "Failed to publish the article: Article not found or already published."
                             }
                         }
                     }
@@ -1565,11 +1597,13 @@ async def rest_publish_article_by_title(title: str = Path(..., description="The 
                         "success": {
                             "summary": "Successful unpublish",
                             "value": {
+                                "success": True,
                                 "status": "success",
                                 "action": "unpublished",
                                 "id": 2466526,
                                 "url": "https://dev.to/rawveg/test-article-1knc",
-                                "title": "Test Article"
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been unpublished successfully."
                             }
                         }
                     }
@@ -1584,8 +1618,10 @@ async def rest_publish_article_by_title(title: str = Path(..., description="The 
                         "failure": {
                             "summary": "Failure to unpublish",
                             "value": {
+                                "success": False,
                                 "status": "error",
-                                "error": "Article not found or already unpublished"
+                                "error": "Article not found or already unpublished",
+                                "message": "Failed to unpublish the article: Article not found or already unpublished."
                             }
                         }
                     }
@@ -1618,11 +1654,13 @@ async def rest_unpublish_article(article_id: str = Path(..., description="The ID
                         "success": {
                             "summary": "Successful unpublish",
                             "value": {
+                                "success": True,
                                 "status": "success",
                                 "action": "unpublished",
                                 "id": 2466526,
                                 "url": "https://dev.to/rawveg/test-article-1knc",
-                                "title": "Test Article"
+                                "title": "Test Article",
+                                "message": "Your article 'Test Article' has been unpublished successfully."
                             }
                         }
                     }
@@ -1637,8 +1675,10 @@ async def rest_unpublish_article(article_id: str = Path(..., description="The ID
                         "failure": {
                             "summary": "Failure to unpublish",
                             "value": {
+                                "success": False,
                                 "status": "error",
-                                "error": "Article not found or already unpublished"
+                                "error": "Article not found or already unpublished",
+                                "message": "Failed to unpublish the article: Article not found or already unpublished."
                             }
                         }
                     }
