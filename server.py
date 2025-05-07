@@ -1299,6 +1299,7 @@ class ArticleResponse(BaseModel):
     description: str
     tags: List[str]
     author: str
+    published: bool
 
 class ScheduledArticleResponse(BaseModel):
     id: int
@@ -1309,6 +1310,7 @@ class ScheduledArticleResponse(BaseModel):
     tags: List[str]
     author: str
     scheduled: bool = Field(..., description="True if the article is scheduled for future publication.")
+    published: bool
 
 # Browse latest articles
 @app.get("/browse_latest_articles")
