@@ -1340,25 +1340,25 @@ async def update_article_by_title(
 from pydantic import BaseModel
 
 class CreateArticleRequest(BaseModel):
-    title: str = Field(..., description="The title of the article.", examples={"default": {"summary": "Default", "value": "My First Article"}})
-    content: str = Field(..., description="The markdown content of the article.", examples={"default": {"summary": "Default", "value": "# Hello World\nThis is my article."}})
-    tags: str = Field("", description="Comma-separated list of tags (e.g., 'python,webdev').", examples={"default": {"summary": "Default", "value": "python,webdev"}})
-    published: bool = Field(False, description="Whether to publish immediately (default: False).", examples={"default": {"summary": "Default", "value": False}})
+    title: str = Field(..., description="The title of the article.", examples=["My First Article"])
+    content: str = Field(..., description="The markdown content of the article.", examples=["# Hello World\nThis is my article."])
+    tags: str = Field("", description="Comma-separated list of tags (e.g., 'python,webdev').", examples=["python,webdev"])
+    published: bool = Field(False, description="Whether to publish immediately (default: False).", examples=[True, False])
 
 class UpdateArticleRequest(BaseModel):
-    id: Union[str, int] = Field(..., description="The ID of the article to update.", examples={"default": {"summary": "Default", "value": 123456}})
-    title: Optional[str] = Field(None, description="New title for the article.", examples={"default": {"summary": "Default", "value": "Updated Title"}})
-    content: Optional[str] = Field(None, description="New markdown content.", examples={"default": {"summary": "Default", "value": "# Updated Content"}})
-    tags: Optional[str] = Field(None, description="New comma-separated list of tags.", examples={"default": {"summary": "Default", "value": "python,ai"}})
-    published: Optional[bool] = Field(None, description="New publish status.", examples={"default": {"summary": "Default", "value": True}})
+    id: Union[str, int] = Field(..., description="The ID of the article to update.", examples=[123456])
+    title: Optional[str] = Field(None, description="New title for the article.", examples=["Updated Title"])
+    content: Optional[str] = Field(None, description="New markdown content.", examples=["# Updated Content"])
+    tags: Optional[str] = Field(None, description="New comma-separated list of tags.", examples=["python,ai"])
+    published: Optional[bool] = Field(None, description="New publish status.", examples=[True, False])
 
 # Add this model above the endpoint definitions
 class UpdateArticleByTitleRequest(BaseModel):
-    title: str = Field(..., examples={"default": {"summary": "Title", "value": "Test Article"}})
-    new_title: Optional[str] = Field(None, examples={"default": {"summary": "New Title", "value": "Updated Title"}})
-    content: Optional[str] = Field(None, examples={"default": {"summary": "Content", "value": "# Updated Content"}})
-    tags: Optional[str] = Field(None, examples={"default": {"summary": "Tags", "value": "python,ai"}})
-    published: Optional[bool] = Field(None, examples={"default": {"summary": "Published", "value": True}})
+    title: str = Field(..., examples=["Test Article"])
+    new_title: Optional[str] = Field(None, examples=["Updated Title"])
+    content: Optional[str] = Field(None, examples=["# Updated Content"])
+    tags: Optional[str] = Field(None, examples=["python,ai"])
+    published: Optional[bool] = Field(None, examples=[True, False])
 
 # Browse latest articles
 @app.get("/browse_latest_articles")
