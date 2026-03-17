@@ -1,4 +1,4 @@
-fastmcp==2.14.0
+fastmcp==2.14.2
 httpx>=0.24.0
 fastapi>=0.100.0
 uvicorn>=0.22.0
